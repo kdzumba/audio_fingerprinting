@@ -8,7 +8,7 @@ public class AudioGeneratorComponent extends JPanel {
   private final AudioGenerator generator;
 
   public AudioGeneratorComponent() {
-    this.generator = new AudioGenerator(5000, 1, 5000);
+    this.generator = new AudioGenerator(5000, 1, 5);
 
     //Here we are placing the various UI control elements for controlling various aspects
     // of the AudioGenerator 

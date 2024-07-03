@@ -19,7 +19,7 @@ public class AudioGraphPanel extends JPanel {
     this.yAxis = new Line(new Coordinate(), new Coordinate());
     this.setPreferredSize(new Dimension(450, 400));
 
-    this.audioGenerator = new AudioGenerator(150, 1, 5000);
+    this.audioGenerator = new AudioGenerator(150, 1, 5);
   }
 
   @Override

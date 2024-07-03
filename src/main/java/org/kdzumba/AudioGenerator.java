@@ -42,7 +42,7 @@ public class AudioGenerator {
     sourceDataLine.start();
     
     //The number of samples per second * total number of seconds (this.duration / 1000)
-    var audioLength = AudioGenerator.audioFormat.getSampleRate() * (this.duration / 1000);
+    var audioLength = AudioGenerator.audioFormat.getSampleRate() * this.duration;
 
     //Clear the previously generated samples so the duration doesn't double with each play
     this.toneSamples.clear();
