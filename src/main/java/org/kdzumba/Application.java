@@ -1,6 +1,6 @@
 package org.kdzumba;
 
-import org.kdzumba.gui.AudioGraphPanel;
+import org.kdzumba.gui.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,11 +13,13 @@ public class Application extends JFrame {
     var app = new Application();
 
     EventQueue.invokeLater(() -> {
-      app.setSize(WIDTH, HEIGHT);
-      app.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
       var audioGraphPanel = new AudioGraphPanel();
-      app.add(audioGraphPanel);
+      var audioGeneratorComponent = new AudioGeneratorComponent();
+
+      var contentPanel = new JPanel();
+      contentPanel.add(audioGeneratorComponent);
+
+      app.add(contentPanel);
       app.pack();
       app.setVisible(true);
     });

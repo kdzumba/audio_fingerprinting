@@ -5,19 +5,21 @@ import org.kdzumba.graphics2d.*;
 import javax.sound.sampled.LineUnavailableException;
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
 
 public class AudioGraphPanel extends JPanel {
 
   private final Line xAxis;
   private final Line yAxis;
   private final AudioGenerator audioGenerator;
+  private ArrayList<Integer> audioSamples;
 
   public AudioGraphPanel() {
     this.xAxis = new Line(new Coordinate(), new Coordinate());
     this.yAxis = new Line(new Coordinate(), new Coordinate());
     this.setPreferredSize(new Dimension(450, 400));
 
-    this.audioGenerator = new AudioGenerator(14500, 1, 5000);
+    this.audioGenerator = new AudioGenerator(150, 1, 5000);
   }
 
   @Override
@@ -29,6 +31,16 @@ public class AudioGraphPanel extends JPanel {
     yAxis.draw(g);
     drawAudioGraphics(g);
     playAudio();
+  }
+
+  public void drawAudioGraph(Graphics g) {
+    int samplesCount = this.audioSamples.size();
+    int panelWidth = getWidth();
+    int panelHeight = getHeight();
+  }
+
+  public void setAudioSamples(ArrayList<Integer> samples) {
+    this.audioSamples = samples;
   }
 
   public void drawAudioGraphics(Graphics g) {
