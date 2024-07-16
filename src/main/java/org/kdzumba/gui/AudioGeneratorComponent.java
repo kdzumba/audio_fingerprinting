@@ -6,38 +6,67 @@ import java.awt.*;
 
 public class AudioGeneratorComponent extends JPanel {
   private final AudioGenerator generator;
+  private final int MIN_AUDIBLE_FREQUENCY = 20;
+  private final int MAX_AUDIBLE_FREQUENCY = 20000;
+  public static final int MAX_VOLUME = 100;
+  public static final int MIN_VOLUME = 0;
 
   public AudioGeneratorComponent() {
-    this.generator = new AudioGenerator(5000, 1, 5);
+    this.generator = new AudioGenerator(5000, 0, 5);
 
     //Here we are placing the various UI control elements for controlling various aspects
     // of the AudioGenerator 
-    var volumeSlider = new JSlider();
-    var frequencySlider = new JSlider();
+    var volumeSlider = new JSlider(MIN_VOLUME, MAX_VOLUME, MIN_VOLUME);
+    volumeSlider.addChangeListener(e -> {
+      setGeneratedToneVolume(volumeSlider.getValue());
+    });
+    
+    var frequencyTextField = new JTextField(Integer.toString(MIN_AUDIBLE_FREQUENCY));
+    var frequencySlider = new JSlider(MIN_AUDIBLE_FREQUENCY, MAX_AUDIBLE_FREQUENCY, MIN_AUDIBLE_FREQUENCY);
+
+    frequencySlider.addChangeListener(e -> {
+      frequencyTextField.setText(Integer.toString(frequencySlider.getValue()));
+      setGeneratedToneFrequency(frequencySlider.getValue());
+    });
+
+    frequencyTextField.addActionListener(e -> {
+      var setValue = Integer.parseInt(frequencyTextField.getText());
+      setGeneratedToneFrequency(setValue);
+    });
 
     var sliderControlsPanel = new JPanel(new GridLayout(2, 2));
     var volumeLabel = new JLabel("Volume:");
     sliderControlsPanel.add(volumeLabel);
     sliderControlsPanel.add(volumeSlider);
 
-    var frequencyLabel = new JLabel("Frequency:");
+    var frequencyControlsPanel = new JPanel();
+    frequencyControlsPanel.add(frequencySlider);
+    frequencyControlsPanel.add(frequencyTextField);
+    var frequencyLabel = new JLabel("Frequency (Hz):");
     sliderControlsPanel.add(frequencyLabel);
-    sliderControlsPanel.add(frequencySlider);
+    sliderControlsPanel.add(frequencyControlsPanel);
 
     var formatControlsPanel = new JPanel();
     var verticalBoxLayoutManager = new BoxLayout(formatControlsPanel, BoxLayout.Y_AXIS);
     formatControlsPanel.add(sliderControlsPanel);
     formatControlsPanel.setLayout(verticalBoxLayoutManager);
     var playButton = new JButton("Play");
-    playButton.addActionListener(e -> this.playGeneratedAudio());
+    playButton.addActionListener(e -> new Thread(() -> this.playGeneratedAudio()).start());
 
     this.add(formatControlsPanel);
     this.add(playButton);
   }
 
-  private void handleIncreaseVolume() {
-    this.generator.increaseVolume();
+  private void setGeneratedToneFrequency(int frequency) {
+    System.out.println("Tone frequency now set to: " + this.generator.getFrequency());
+    this.generator.setFrequency(frequency);
   }
+
+  private void setGeneratedToneVolume(int volume) {
+    System.out.println("The tone volume is now set to: " + this.generator.getVolume());
+    this.generator.setVolume(volume);
+  }
+
 
   private void playGeneratedAudio() {
     System.out.println("Playing the generated Audio");
