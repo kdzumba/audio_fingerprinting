@@ -6,8 +6,8 @@ import javax.swing.*;
 import java.awt.*;
 
 public class Application extends JFrame {
-  public static final int WIDTH = 1000;
-  public static final int HEIGHT = 600;
+  public static final int WIDTH = 800;
+  public static final int HEIGHT = 500;
 
   public static void main(String[] args) {
     var app = new Application();
@@ -21,7 +21,7 @@ public class Application extends JFrame {
       contentPanel.add(audioVisualiser);
 
       app.add(contentPanel);
-//      app.pack();
+      app.pack();
       app.setVisible(true);
     });
   }

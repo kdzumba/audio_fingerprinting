@@ -2,22 +2,24 @@ package org.kdzumba;
 
 import javax.sound.sampled.*;
 
+import org.kdzumba.gui.AudioVisualiserComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.LinkedList;
 import java.util.Objects;
 
 public class AudioProcessor {
-    private AudioFormat audioFormat;
+    private final AudioFormat audioFormat;
+    private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
+    private static final int BUFFER_SIZE = 256;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
-    public double[] capturedInputAmplitudes;
-    private int streamBufferSize;
 
     public AudioProcessor() {
         // The audio format tells Java how to interpret and handle the bits of information
@@ -26,7 +28,7 @@ public class AudioProcessor {
         float SAMPLE_RATE = 44100f;     // Rate at which an audio file is sampled (Hz)
         int SAMPLE_SIZE_IN_BITS = 16;   // Number of bits used to represent each sample of the audio. Determines
                                         // the bit depth for the audio signal
-        int CHANNELS = 1;               // Mono or Stereo Sound
+        int CHANNELS = 2;               // Mono or Stereo Sound
         boolean SIGNED = true;
         boolean BIG_ENDIAN = false;
 
@@ -41,32 +43,40 @@ public class AudioProcessor {
         return audioFormat;
     }
 
-    // The captured data is written to a PipedOutputStream, which gets connected to the passed in 
-    // PipedInputStream object from which the data will be read in a separate thread
-    public void captureAudioDataFromMicrophone(PipedInputStream inputStream) throws IOException {
-        PipedOutputStream outputStream = new PipedOutputStream(inputStream);
+    public ConcurrentLinkedQueue<Short> getSamples() { return samples; }
+
+    public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
         int numberOfBytesRead;
         TargetDataLine line = getTargetDataLine();
-
-        // 1 Frame = 1/8 the size of the line's buffer
-        // This ensures the program's success in sharing the line's buffer with the mixer
-        this.streamBufferSize = Objects.requireNonNull(line).getBufferSize() / 8;
-        byte[] data = new byte[this.streamBufferSize];
+        int frameSize = audioFormat.getFrameSize();
+        byte[] writeBuffer = new byte[frameSize];
 
         // Start Capturing Audio
-        line.start();
+        Objects.requireNonNull(line).start();
         while (true) {
-            numberOfBytesRead = line.read(data, 0, data.length);
-            // We are writing all the data that we read from the data line to the outputStream
-            // This data might not fill up the whole streamBufferSize, hence numberOfBytesRead
-            outputStream.write(data, 0, numberOfBytesRead);
+            numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
+            outputStream.write(writeBuffer, 0, numberOfBytesRead);
         }
-        // Remove any remaining bytes from the Line's buffer
-        //line.flush();
-        //outputStream.close();
+//        line.flush();
+//        outputStream.close();
     }
 
-    public int getStreamBufferSize() { return this.streamBufferSize; }
+    public void processCapturedSamples(PipedInputStream inputStream, AudioVisualiserComponent audioVisualizer) throws IOException {
+        int frameSize = audioFormat.getFrameSize();
+        byte[] readBuffer = new byte[frameSize];
+
+        while (true) {
+            int numberOfBytesRead = inputStream.read(readBuffer, 0, readBuffer.length);
+            short[] samplesArray = new short[numberOfBytesRead / 2];
+            ByteBuffer.wrap(readBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(samplesArray);
+            for(short sample : samplesArray) {
+                if(samples.size() >= BUFFER_SIZE) {
+                  samples.poll();
+                }
+                samples.add(sample); 
+            }
+        }
+    }
 
     private TargetDataLine getTargetDataLine() {
         TargetDataLine line = null;
@@ -85,26 +95,5 @@ public class AudioProcessor {
             LOGGER.debug("There was no DataLine available for the application to acquire");
         }
         return line;
-    }
-
-    private static int[] byteToIntArray(byte[] bytes) {
-        ByteBuffer wrappedBytes = ByteBuffer.wrap(bytes);
-        int[] ints = new int[bytes.length / 4]; // 4 here is the size of an integer in bytes
-        for(int i = 0; i < ints.length; i++) {
-            ints[i] = wrappedBytes.getInt();
-        }
-        return ints;
-    }
-
-    private double normalize(byte value) {
-        int sampleSizeInBits = this.audioFormat.getSampleSizeInBits();
-        int maxSampleValue = 1 << sampleSizeInBits; // Effectively doing 2^sampleSizeInBits
-        double desiredAmplitudeRange = 1.0; // Our audio amplitudes will be in the range [-1.0 and 1.0]
-        double scalingFactor = desiredAmplitudeRange / maxSampleValue;
-        return value * scalingFactor;
-    }
-
-    public void setAudioFormat(AudioFormat format) {
-        audioFormat = format;
     }
 }
