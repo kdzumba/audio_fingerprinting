@@ -98,5 +98,4 @@ public class AudioGenerator {
 
 
   public List<Integer> getSamples() { return this.toneSamples; }
-
 }
