@@ -1,6 +1,6 @@
 package org.kdzumba;
 
-import org.kdzumba.gui.panels.AudioVisualizer;
+import org.kdzumba.gui.panels.AudioVisualizerPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,7 +16,7 @@ public class Application extends JFrame {
     app.setResizable(false);
 
     EventQueue.invokeLater(() -> {
-      var audioVisualiser = new AudioVisualizer();
+      var audioVisualiser = new AudioVisualizerPanel();
       var contentPanel = new JPanel();
       contentPanel.add(audioVisualiser);
 

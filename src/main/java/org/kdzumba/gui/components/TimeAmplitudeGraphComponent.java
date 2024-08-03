@@ -1,4 +1,4 @@
-package org.kdzumba.gui;
+package org.kdzumba.gui.components;
 
 import org.kdzumba.graphics2d.Coordinate;
 import org.kdzumba.graphics2d.Line;
@@ -10,13 +10,13 @@ import java.util.Queue;
 
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
-public class AudioVisualiserComponent extends JComponent {
-    private final int WIDTH = 700;
+public class TimeAmplitudeGraphComponent extends JComponent {
+    private final int WIDTH = 600;
     private final int HEIGHT = 200;
     private boolean showGrid = true;
     private final Queue<Short> samples;
 
-    public AudioVisualiserComponent(Queue<Short> samples) {
+    public TimeAmplitudeGraphComponent(Queue<Short> samples) {
         this.samples = samples;
     }
 
@@ -52,12 +52,11 @@ public class AudioVisualiserComponent extends JComponent {
         for(Short sample : samples) {
             double y = midHeight - sample / yScale;
             MathUtils.Range samplingRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
-            MathUtils.Range displayRange = new MathUtils.Range((midHeight - 10) * -1, midHeight - 10);
+            MathUtils.Range displayRange = new MathUtils.Range(midHeight * -1, midHeight);
             double normalizedY = MathUtils.convertToRange(sample, samplingRange, displayRange);
 
             Coordinate start = new Coordinate(x, midHeight);
             Coordinate end = new Coordinate(x, midHeight - normalizedY);
-            System.out.println("Original value: " + sample + " " + "Normalised value: " + (normalizedY - midHeight));
             Line line = new Line(start, end, Color.WHITE);
             line.draw(g);
             x += xIncrement;

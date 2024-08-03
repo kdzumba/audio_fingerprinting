@@ -10,13 +10,13 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.Objects;
 
 public class AudioProcessor {
     private final AudioFormat audioFormat;
     private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
-    private static final int BUFFER_SIZE = 700;
+    private static final int BUFFER_SIZE = 600;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
 
     public AudioProcessor() {
@@ -42,6 +42,7 @@ public class AudioProcessor {
     }
 
     public ConcurrentLinkedQueue<Short> getSamples() { return samples; }
+
 
     public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
         int numberOfBytesRead;
@@ -93,5 +94,14 @@ public class AudioProcessor {
             LOGGER.debug("There was no DataLine available for the application to acquire");
         }
         return line;
+    }
+
+    private static double[] convertQueueToDoubleArray(ConcurrentLinkedQueue<Short> queue) {
+        Object[] objectArray = queue.toArray();
+        double[] doubleArray = new double[objectArray.length];
+        for(int i = 0; i < objectArray.length; i++){
+            doubleArray[i] = (double) objectArray[i];
+        }
+        return doubleArray;
     }
 }
