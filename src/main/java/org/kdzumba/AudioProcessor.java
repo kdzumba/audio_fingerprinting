@@ -2,7 +2,6 @@ package org.kdzumba;
 
 import javax.sound.sampled.*;
 
-import org.kdzumba.gui.AudioVisualiserComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,13 +11,12 @@ import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.LinkedList;
 import java.util.Objects;
 
 public class AudioProcessor {
     private final AudioFormat audioFormat;
     private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
-    private static final int BUFFER_SIZE = 256;
+    private static final int BUFFER_SIZE = 700;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
 
     public AudioProcessor() {
@@ -30,7 +28,7 @@ public class AudioProcessor {
                                         // the bit depth for the audio signal
         int CHANNELS = 2;               // Mono or Stereo Sound
         boolean SIGNED = true;
-        boolean BIG_ENDIAN = false;
+        boolean BIG_ENDIAN = true;
 
         audioFormat = new AudioFormat(SAMPLE_RATE,
                 SAMPLE_SIZE_IN_BITS,
@@ -61,14 +59,14 @@ public class AudioProcessor {
 //        outputStream.close();
     }
 
-    public void processCapturedSamples(PipedInputStream inputStream, AudioVisualiserComponent audioVisualizer) throws IOException {
+    public void processCapturedSamples(PipedInputStream inputStream) throws IOException {
         int frameSize = audioFormat.getFrameSize();
         byte[] readBuffer = new byte[frameSize];
 
         while (true) {
             int numberOfBytesRead = inputStream.read(readBuffer, 0, readBuffer.length);
-            short[] samplesArray = new short[numberOfBytesRead / 2];
-            ByteBuffer.wrap(readBuffer).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(samplesArray);
+            short[] samplesArray = new short[numberOfBytesRead / audioFormat.getChannels()];
+            ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
             for(short sample : samplesArray) {
                 if(samples.size() >= BUFFER_SIZE) {
                   samples.poll();

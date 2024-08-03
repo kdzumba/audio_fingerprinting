@@ -70,7 +70,7 @@ public class AudioVisualizer extends JPanel {
     private void startSamplesProcessingThread(PipedInputStream inputStream) {
         new Thread(() -> {
             try {
-                audioProcessor.processCapturedSamples(inputStream, audioVisualizer);
+                audioProcessor.processCapturedSamples(inputStream);
                 audioVisualizer.repaint();
             } catch(IOException exception) {
                 System.out.println("An IO Exception occurred when processing samples");

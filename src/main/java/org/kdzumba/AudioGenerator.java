@@ -45,7 +45,7 @@ public class AudioGenerator {
       // (-80-6.0206)
       var fromRange = new MathUtils.Range(0f, MAX_GENERATOR_VOLUME);
       var toRange = new MathUtils.Range(-80f, 6.0206f); 
-      this.volume = MathUtils.convertToRange(volume, fromRange, toRange);
+//      this.volume = MathUtils.convertToRange(volume, fromRange, toRange);
       var volumeControl = (FloatControl) AudioGenerator.getSourceDataLine().getControl(FloatControl.Type.MASTER_GAIN);
       volumeControl.setValue(this.volume);
     } catch(Exception ex) {
