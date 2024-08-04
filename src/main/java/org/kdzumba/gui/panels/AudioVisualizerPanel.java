@@ -4,18 +4,13 @@ import org.kdzumba.AudioProcessor;
 import org.kdzumba.gui.components.ColorBarComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 
 import java.awt.*;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 
 public class AudioVisualizerPanel extends JPanel {
-    private final Logger LOGGER = LoggerFactory.getLogger(AudioVisualizerPanel.class);
     private final TimeAmplitudeGraphComponent audioVisualizer;
     private final SpectrogramComponent spectrogram;
     private final AudioProcessor audioProcessor = new AudioProcessor();
@@ -56,59 +51,50 @@ public class AudioVisualizerPanel extends JPanel {
         buttonLabelGroup.add(showGrid);
 
         JButton captureAudioButton = getCaptureButton();
+        JButton stopCaptureButton = getStopCaptureButton();
         var controlsPanel = new JPanel();
         controlsPanel.add(buttonLabelGroup);
         controlsPanel.add(captureAudioButton);
+        controlsPanel.add(stopCaptureButton);
         return controlsPanel;
     }
 
     private JButton getCaptureButton() {
         JButton captureAudioButton = new JButton("Capture Audio");
         captureAudioButton.addActionListener((e) -> {
-            try {
-                PipedOutputStream outputStream = new PipedOutputStream();
-                PipedInputStream inputStream = new PipedInputStream(outputStream);
-
-                startCaptureThread(outputStream);
-                startSamplesProcessingThread(inputStream);
-
-                Timer timer = new Timer(50, event -> audioVisualizer.repaint());
-                timer.start();
-            } catch(IOException exception) {
-                System.out.println("An IOException occurred when setting up streams");
-            }
+            startCaptureThread();
+            Timer timer = new Timer(50, event -> audioVisualizer.repaint());
+            timer.start();
         });
         return captureAudioButton;
     }
 
-    private void startCaptureThread(PipedOutputStream outputStream) {
+    private JButton getStopCaptureButton() {
+        JButton stopAudioCapture = new JButton("Stop");
+        stopAudioCapture.addActionListener((e) -> {
+            audioProcessor.stopCapture();
+        });
+        return stopAudioCapture;
+    }
+
+    private void startCaptureThread() {
         new Thread(() -> {
             try {
-                audioProcessor.capturing = !audioProcessor.capturing;
-                audioProcessor.captureAudioDataFromMicrophone(outputStream);
+                audioProcessor.startCapture();
+                audioVisualizer.repaint();
+                // Generate spectrogram data and update the SpectrogramComponent
+                if(!audioProcessor.getSamples().isEmpty()) {
+                    double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
+                    spectrogram.setSpectrogramData(spectrogramData);
+                }
+                spectrogram.repaint();
             } catch(IOException exception) {
                 System.out.println("An IOException occurred when capturing samples");
             }
         }).start();
     }
 
-    private void startSamplesProcessingThread(PipedInputStream inputStream) {
-        new Thread(() -> {
-            try {
-                audioProcessor.processCapturedSamples(inputStream);
-                audioVisualizer.repaint();
-
-                // Generate spectrogram data and update the SpectrogramComponent
-                double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
-                spectrogram.setSpectrogramData(spectrogramData);
-            } catch(IOException exception) {
-                System.out.println("An IO Exception occurred when processing samples");
-            }
-        }).start();
-    }
     private void toggleGrid() {
-        System.out.println("Toggling grid visibility");
-        LOGGER.debug("Toggling grid visibility");
         audioVisualizer.setShowGrid(!audioVisualizer.getShowGrid());
         audioVisualizer.repaint();
     }

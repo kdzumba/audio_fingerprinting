@@ -20,11 +20,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class AudioProcessor {
     private final AudioFormat audioFormat;
     private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
-    private short[] samplesArray = new short[4096 / 2];;
+    private final short[] samplesArray = new short[4096 / 2];;
     private static final int BUFFER_SIZE = 44100; // Max number of samples to store
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     public boolean capturing = false;
     private int numberOfBytesRead;
+    private PipedInputStream inputStream;
+    private PipedOutputStream outputStream;
+    private TargetDataLine line;
 
     public AudioProcessor() {
         // The audio format tells Java how to interpret and handle the bits of information
@@ -48,12 +51,51 @@ public class AudioProcessor {
         return audioFormat;
     }
 
+    public void startCapture() throws IOException {
+        capturing = true;
+        inputStream = new PipedInputStream();
+        outputStream = new PipedOutputStream(inputStream);
+
+        Thread captureThread = new Thread(() -> {
+            try{
+                captureAudioDataFromMicrophone(outputStream);
+            } catch(IOException exception){
+                System.out.println("An IOException occurred when capturing audio samples");
+                exception.printStackTrace();
+            }
+        });
+
+        Thread processThread = new Thread(() -> {
+            try {
+                processCapturedSamples(inputStream);
+            } catch(Exception exception) {
+                System.out.println("An IOException occurred when processing captured samples");
+            }
+        });
+
+        captureThread.start();
+        processThread.start();
+    }
+
+    public void stopCapture() {
+        capturing = false;
+        if(line != null) {
+            line.stop();
+            line.close();
+        }
+        try {
+            if(outputStream != null) outputStream.close();
+            if(inputStream != null) inputStream.close();
+        } catch(IOException exception) {
+            System.out.println("An IOException occurred when closing streams");
+        }
+    }
+
     public ConcurrentLinkedQueue<Short> getSamples() { return samples; }
     public short[] getSamplesArray() { return samplesArray; }
 
-
     public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
-        TargetDataLine line = getTargetDataLine();
+        line = getTargetDataLine();
         byte[] writeBuffer = new byte[4096];
 
         // Start Capturing Audio
@@ -61,7 +103,6 @@ public class AudioProcessor {
         try (outputStream) {
             while (capturing) {
                 numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
-                System.out.println("Read " + numberOfBytesRead + " bytes from the target data line");
                 outputStream.write(writeBuffer, 0, numberOfBytesRead);
             }
             line.flush();
@@ -75,17 +116,16 @@ public class AudioProcessor {
         byte[] readBuffer = new byte[4096];
 
         while (capturing) {
-            int bytesReadCount = inputStream.read(readBuffer, 0, numberOfBytesRead);
-            System.out.println("Number of bytes read in the current read session is: " + numberOfBytesRead);
-            System.out.println("Read: " + bytesReadCount + " bytes from the input stream");
-//            samplesArray = new short[numberOfBytesRead / audioFormat.getChannels()];
-            ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
+            int bytesRead = inputStream.read(readBuffer, 0, numberOfBytesRead);
+            if(bytesRead > 0) {
+                ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-            for(short sample : samplesArray) {
-                if(samples.size() >= BUFFER_SIZE) {
-                  samples.poll();
+                for(short sample : samplesArray) {
+                    if(samples.size() >= BUFFER_SIZE) {
+                        samples.poll();
+                    }
+                    samples.add(sample);
                 }
-                samples.add(sample);
             }
         }
     }

@@ -13,7 +13,7 @@ import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class SpectrogramComponent extends JComponent {
     private final int WIDTH = 540;
-    private final int HEIGHT = 400;
+    private final int HEIGHT = 500;
     private double[][] spectrogramData;
     private final AudioFormat audioFormat;
 
@@ -49,7 +49,7 @@ public class SpectrogramComponent extends JComponent {
         }
 
         drawTimeTicks(g, numberOfCols, colWidth);
-//        drawFrequencyTicks(g, numberOfRows, rowHeight);
+        drawFrequencyTicks(g, numberOfRows, rowHeight);
     }
 
     private Range getIntensityRange(int numberOfRows, int numberOfCols) {
@@ -81,8 +81,8 @@ public class SpectrogramComponent extends JComponent {
         double windowDuration = (double) 1024 / audioFormat.getSampleRate(); // Example window size
         for (int j = 0; j < numberOfCols; j += numberOfCols / 10) {
             int x = (int) (j * colWidth);
-            g.drawLine(x, HEIGHT - 10, x, HEIGHT);
-            g.drawString(String.format("%.2f", j * windowDuration), x, HEIGHT - 20);
+            g.drawLine(x, HEIGHT, x, HEIGHT + 10);
+            g.drawString(String.format("%.2f", j * windowDuration), x, HEIGHT + 20);
         }
     }
 
@@ -101,7 +101,7 @@ public class SpectrogramComponent extends JComponent {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
         g2d.setColor(VISUALIZER_BACKGROUND_COLOR);
-        g2d.fillRect(0, 0, getWidth(), getHeight());
+        g2d.fillRect(0, 0, WIDTH, HEIGHT);
 
         UIUtils.showGrid(g, WIDTH, HEIGHT);
         drawSpectrogram(g);
@@ -109,6 +109,6 @@ public class SpectrogramComponent extends JComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        return new Dimension(WIDTH, HEIGHT);
+        return new Dimension(WIDTH, HEIGHT + 30);
     }
 }
