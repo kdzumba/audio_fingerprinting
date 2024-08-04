@@ -26,7 +26,7 @@ public class AudioVisualizerPanel extends JPanel {
 
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        audioVisualizer = new TimeAmplitudeGraphComponent(audioProcessor.getSamples());
+        audioVisualizer = new TimeAmplitudeGraphComponent(audioProcessor.getSamplesArray());
         this.add(audioVisualizer);
         this.add(Box.createVerticalStrut(10));
 

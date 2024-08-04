@@ -7,31 +7,28 @@ import org.kdzumba.utils.UIUtils;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Queue;
 
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class TimeAmplitudeGraphComponent extends JComponent {
-    private final int WIDTH = 1024;
-    private final int HEIGHT = 200;
     private boolean showGrid = true;
-    private final Queue<Short> samples;
+    private final short[] samplesArray; // Array of amplitudes that we want to plot
 
-    public TimeAmplitudeGraphComponent(Queue<Short> samples) {
-        this.samples = samples;
+    public TimeAmplitudeGraphComponent(short[] samplesArray) {
+        this.samplesArray = samplesArray;
     }
 
     private void drawSoundWave(Graphics g) {
-        if(samples.isEmpty()) { return ; }
+        if(samplesArray.length == 0) { return ; }
 
         int width = getWidth();
         int height = getHeight();
         int midHeight = (height / 2);
-        int displayWidth = Math.min(samples.size(), width);
-        double xIncrement = (double) width / displayWidth;
+        int displayWidth = Math.min(samplesArray.length, width);
+        double xIncrement = (double) samplesArray.length / displayWidth;
 
         double x = 0;
-        for(Short sample : samples) {
+        for(Short sample : samplesArray) {
             MathUtils.Range samplingRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
             MathUtils.Range displayRange = new MathUtils.Range(midHeight * -1, midHeight);
             double normalizedY = MathUtils.convertToRange(sample, samplingRange, displayRange);
@@ -47,33 +44,6 @@ public class TimeAmplitudeGraphComponent extends JComponent {
     public void setShowGrid(boolean showGrid) { this.showGrid = showGrid; }
     public boolean getShowGrid() { return this.showGrid; }
 
-    private int[] downSample(double[] samples, int width) {
-        int[] downSampled = new int[width];
-        int chunkSize = Math.max(samples.length / width, 1);
-
-        for(int i = 0; i < width; i++) {
-            double sum = 0;
-            for(int j = 0; j < chunkSize; j++) {
-                int index = i * chunkSize + j;
-                if(index < samples.length) {
-                    sum += samples[index];
-                }
-            }
-            downSampled[i] = (int) sum / chunkSize;
-        }
-        return downSampled;
-    }
-
-    private double[] lowPassFilter(Short[] samples, double cutoffFrequency) {
-        double[] filtered = new double[samples.length];
-
-        filtered[0] = samples[0];
-        for (int i = 1; i < samples.length; i++) {
-            filtered[i] = (cutoffFrequency * samples[i]) + ((1 - cutoffFrequency) * filtered[i - 1]);
-        }
-        return filtered;
-    }
-
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -82,13 +52,15 @@ public class TimeAmplitudeGraphComponent extends JComponent {
         g2d.setColor(VISUALIZER_BACKGROUND_COLOR);
         g2d.fillRect(0, 0, getWidth(), getHeight());
         if(this.showGrid) {
-            UIUtils.showGrid(g, WIDTH, HEIGHT);
+            UIUtils.showGrid(g, getWidth(), getHeight());
         }
         drawSoundWave(g);
     }
 
     @Override
     public Dimension getPreferredSize() {
+        int WIDTH = 600;
+        int HEIGHT = 200;
         return new Dimension(WIDTH, HEIGHT);
     }
 }
