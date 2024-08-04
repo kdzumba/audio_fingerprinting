@@ -3,6 +3,7 @@ package org.kdzumba.gui.components;
 import org.kdzumba.graphics2d.Coordinate;
 import org.kdzumba.graphics2d.Line;
 import org.kdzumba.utils.MathUtils;
+import org.kdzumba.utils.UIUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,25 +21,6 @@ public class TimeAmplitudeGraphComponent extends JComponent {
         this.samples = samples;
     }
 
-    private void showGrid(Graphics g) {
-        int BLOCK_SIZE = 10;
-        for(int i = 0; i < WIDTH; i ++) {
-            // Create a new line at every ith multiple of BLOCK_SIZE
-            Coordinate start = new Coordinate(i * BLOCK_SIZE, 0);
-            Coordinate end = new Coordinate(i * BLOCK_SIZE, HEIGHT);
-            Line line = new Line(start, end);
-            line.draw(g);
-        }
-
-        for(int j = 0; j < HEIGHT; j++) {
-            // Create a new vertical line for every jth multiple of BLOCK_SIZE
-            Coordinate start = new Coordinate(0, j * BLOCK_SIZE);
-            Coordinate end = new Coordinate(WIDTH, j * BLOCK_SIZE);
-            Line line = new Line(start, end);
-            line.draw(g);
-        }
-    }
-
     private void drawSoundWave(Graphics g) {
         if(samples.isEmpty()) { return ; }
 
@@ -46,11 +28,9 @@ public class TimeAmplitudeGraphComponent extends JComponent {
         int height = getHeight();
         int midHeight = (height / 2);
         double xIncrement = (double) width / samples.size();
-        double yScale = (double) Short.MAX_VALUE / midHeight;
 
         double x = 0;
         for(Short sample : samples) {
-            double y = midHeight - sample / yScale;
             MathUtils.Range samplingRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
             MathUtils.Range displayRange = new MathUtils.Range(midHeight * -1, midHeight);
             double normalizedY = MathUtils.convertToRange(sample, samplingRange, displayRange);
@@ -74,7 +54,7 @@ public class TimeAmplitudeGraphComponent extends JComponent {
         g2d.setColor(VISUALIZER_BACKGROUND_COLOR);
         g2d.fillRect(0, 0, getWidth(), getHeight());
         if(this.showGrid) {
-            showGrid(g);
+            UIUtils.showGrid(g, WIDTH, HEIGHT);
         }
         drawSoundWave(g);
     }

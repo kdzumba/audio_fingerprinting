@@ -2,6 +2,10 @@ package org.kdzumba;
 
 import javax.sound.sampled.*;
 
+import org.apache.commons.math3.complex.Complex;
+import org.apache.commons.math3.transform.DftNormalization;
+import org.apache.commons.math3.transform.FastFourierTransformer;
+import org.apache.commons.math3.transform.TransformType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +22,7 @@ public class AudioProcessor {
     private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
     private static final int BUFFER_SIZE = 600;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
+    public boolean capturing = false;
 
     public AudioProcessor() {
         // The audio format tells Java how to interpret and handle the bits of information
@@ -52,19 +57,18 @@ public class AudioProcessor {
 
         // Start Capturing Audio
         Objects.requireNonNull(line).start();
-        while (true) {
+        while (capturing) {
             numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
             outputStream.write(writeBuffer, 0, numberOfBytesRead);
         }
-//        line.flush();
-//        outputStream.close();
+        line.flush();
     }
 
     public void processCapturedSamples(PipedInputStream inputStream) throws IOException {
         int frameSize = audioFormat.getFrameSize();
         byte[] readBuffer = new byte[frameSize];
 
-        while (true) {
+        while (capturing) {
             int numberOfBytesRead = inputStream.read(readBuffer, 0, readBuffer.length);
             short[] samplesArray = new short[numberOfBytesRead / audioFormat.getChannels()];
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
@@ -75,6 +79,46 @@ public class AudioProcessor {
                 samples.add(sample); 
             }
         }
+    }
+
+    public double[][] generateSpectrogram(int windowSize, int overlap) {
+        int stepSize = windowSize - overlap;
+        int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
+        double[][] spectrogram = new double[numberOfWindows][windowSize / 2];
+
+        double[] window = new double[windowSize];
+        int sampleRate = (int) audioFormat.getSampleRate();
+
+        // Hamming window function
+        for(int i = 0; i < windowSize; i++) {
+            window[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (windowSize - 1));
+        }
+
+        FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
+
+        for(int i = 0; i < numberOfWindows; i++) {
+            double[] segment = new double[windowSize];
+
+            //Get samples for the current window and apply the Hamming window
+            Iterator<Short> iterator = samples.iterator();
+            for(int j = 0; j < i * stepSize; j++) iterator.next(); // skip to start of the current window
+            for(int j = 0; j < windowSize; j++) {
+                if(iterator.hasNext()) {
+                    segment[j] = iterator.next() * window[j];
+                } else {
+                    segment[j] = 0;
+                }
+            }
+
+            // Perform FFT
+            Complex[] result = transformer.transform(segment, TransformType.FORWARD);
+
+            // Compute Magnitude
+            for(int j = 0; j < windowSize / 2; j++) {
+                spectrogram[i][j] = result[j].abs();
+            }
+        }
+        return spectrogram;
     }
 
     private TargetDataLine getTargetDataLine() {

@@ -84,6 +84,7 @@ public class AudioVisualizerPanel extends JPanel {
     private void startCaptureThread(PipedOutputStream outputStream) {
         new Thread(() -> {
             try {
+                audioProcessor.capturing = !audioProcessor.capturing;
                 audioProcessor.captureAudioDataFromMicrophone(outputStream);
             } catch(IOException exception) {
                 System.out.println("An IOException occurred when capturing samples");
@@ -96,6 +97,10 @@ public class AudioVisualizerPanel extends JPanel {
             try {
                 audioProcessor.processCapturedSamples(inputStream);
                 audioVisualizer.repaint();
+
+                // Generate spectrogram data and update the SpectrogramComponent
+                double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
+                spectrogram.setSpectrogramData(spectrogramData);
             } catch(IOException exception) {
                 System.out.println("An IO Exception occurred when processing samples");
             }
