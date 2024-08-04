@@ -24,6 +24,7 @@ public class AudioProcessor {
     private static final int BUFFER_SIZE = 44100; // Max number of samples to store
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     public boolean capturing = false;
+    private int numberOfBytesRead;
 
     public AudioProcessor() {
         // The audio format tells Java how to interpret and handle the bits of information
@@ -52,9 +53,7 @@ public class AudioProcessor {
 
 
     public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
-        int numberOfBytesRead;
         TargetDataLine line = getTargetDataLine();
-        int frameSize = audioFormat.getFrameSize();
         byte[] writeBuffer = new byte[4096];
 
         // Start Capturing Audio
@@ -62,6 +61,7 @@ public class AudioProcessor {
         try (outputStream) {
             while (capturing) {
                 numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
+                System.out.println("Read " + numberOfBytesRead + " bytes from the target data line");
                 outputStream.write(writeBuffer, 0, numberOfBytesRead);
             }
             line.flush();
@@ -72,20 +72,19 @@ public class AudioProcessor {
     }
 
     public void processCapturedSamples(PipedInputStream inputStream) throws IOException {
-        int frameSize = audioFormat.getFrameSize();
         byte[] readBuffer = new byte[4096];
 
         while (capturing) {
-            int numberOfBytesRead = inputStream.read(readBuffer, 0, readBuffer.length);
+            int bytesReadCount = inputStream.read(readBuffer, 0, numberOfBytesRead);
+            System.out.println("Number of bytes read in the current read session is: " + numberOfBytesRead);
+            System.out.println("Read: " + bytesReadCount + " bytes from the input stream");
 //            samplesArray = new short[numberOfBytesRead / audioFormat.getChannels()];
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
             for(short sample : samplesArray) {
                 if(samples.size() >= BUFFER_SIZE) {
-                    System.out.println("Buffer overflow.....");
                   samples.poll();
                 }
-                System.out.println("I'm stuck on add");
                 samples.add(sample);
             }
         }

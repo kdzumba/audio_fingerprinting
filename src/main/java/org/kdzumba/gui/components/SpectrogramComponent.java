@@ -32,14 +32,14 @@ public class SpectrogramComponent extends JComponent {
         int numberOfRows = spectrogramData.length;
         int numberOfCols = spectrogramData[0].length;
 
-        double colWidth = (double) WIDTH / numberOfCols;
-        double rowHeight = (double) HEIGHT / numberOfRows;
+        double colWidth = (double) getWidth() / numberOfCols;
+        double rowHeight = (double) getHeight() / numberOfRows;
 
         Range fromRange = getIntensityRange(numberOfRows, numberOfCols);
         Range toRange = new Range(0.0, 1.0);
 
-        for(int j = 0; j < numberOfCols; j++) {
-            for(int i = 0; i < numberOfRows; i++) {
+        for(int i = 0; i < numberOfRows; i++) {
+            for(int j = 0; j < numberOfCols; j++) {
                 float intensity = (float) Math.log1p(spectrogramData[i][j]);
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
