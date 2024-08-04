@@ -116,16 +116,23 @@ public class AudioProcessor {
         byte[] readBuffer = new byte[4096];
 
         while (capturing) {
-            int bytesRead = inputStream.read(readBuffer, 0, numberOfBytesRead);
-            if(bytesRead > 0) {
-                ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
-
-                for(short sample : samplesArray) {
-                    if(samples.size() >= BUFFER_SIZE) {
-                        samples.poll();
-                    }
-                    samples.add(sample);
+            int totalBytesRead = 0;
+            while(totalBytesRead < numberOfBytesRead) {
+                int bytesRead = inputStream.read(readBuffer, totalBytesRead, numberOfBytesRead - totalBytesRead);
+                if(bytesRead == -1) {
+                    break;
                 }
+                totalBytesRead += bytesRead;
+            }
+
+            ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
+
+            for(short sample : samplesArray) {
+                if(samples.size() >= BUFFER_SIZE) {
+                    samples.poll();
+                }
+                System.out.println("Adding sample: " + sample);
+                samples.add(sample);
             }
         }
     }
