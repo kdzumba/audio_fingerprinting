@@ -12,7 +12,7 @@ import java.util.Queue;
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class TimeAmplitudeGraphComponent extends JComponent {
-    private final int WIDTH = 600;
+    private final int WIDTH = 1024;
     private final int HEIGHT = 200;
     private boolean showGrid = true;
     private final Queue<Short> samples;
@@ -27,7 +27,8 @@ public class TimeAmplitudeGraphComponent extends JComponent {
         int width = getWidth();
         int height = getHeight();
         int midHeight = (height / 2);
-        double xIncrement = (double) width / samples.size();
+        int displayWidth = Math.min(samples.size(), width);
+        double xIncrement = (double) width / displayWidth;
 
         double x = 0;
         for(Short sample : samples) {
@@ -45,6 +46,33 @@ public class TimeAmplitudeGraphComponent extends JComponent {
 
     public void setShowGrid(boolean showGrid) { this.showGrid = showGrid; }
     public boolean getShowGrid() { return this.showGrid; }
+
+    private int[] downSample(double[] samples, int width) {
+        int[] downSampled = new int[width];
+        int chunkSize = Math.max(samples.length / width, 1);
+
+        for(int i = 0; i < width; i++) {
+            double sum = 0;
+            for(int j = 0; j < chunkSize; j++) {
+                int index = i * chunkSize + j;
+                if(index < samples.length) {
+                    sum += samples[index];
+                }
+            }
+            downSampled[i] = (int) sum / chunkSize;
+        }
+        return downSampled;
+    }
+
+    private double[] lowPassFilter(Short[] samples, double cutoffFrequency) {
+        double[] filtered = new double[samples.length];
+
+        filtered[0] = samples[0];
+        for (int i = 1; i < samples.length; i++) {
+            filtered[i] = (cutoffFrequency * samples[i]) + ((1 - cutoffFrequency) * filtered[i - 1]);
+        }
+        return filtered;
+    }
 
     @Override
     protected void paintComponent(Graphics g) {

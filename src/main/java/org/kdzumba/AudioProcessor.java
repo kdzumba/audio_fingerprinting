@@ -20,9 +20,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class AudioProcessor {
     private final AudioFormat audioFormat;
     private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
-    private static final int BUFFER_SIZE = 600;
+    private static final int BUFFER_SIZE = 4096;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     public boolean capturing = false;
+    private TargetDataLine line;
 
     public AudioProcessor() {
         // The audio format tells Java how to interpret and handle the bits of information
@@ -51,17 +52,22 @@ public class AudioProcessor {
 
     public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
         int numberOfBytesRead;
-        TargetDataLine line = getTargetDataLine();
+        line = getTargetDataLine();
         int frameSize = audioFormat.getFrameSize();
         byte[] writeBuffer = new byte[frameSize];
 
         // Start Capturing Audio
         Objects.requireNonNull(line).start();
-        while (capturing) {
-            numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
-            outputStream.write(writeBuffer, 0, numberOfBytesRead);
+        try (outputStream) {
+            while (capturing) {
+                numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
+                outputStream.write(writeBuffer, 0, numberOfBytesRead);
+            }
+            line.flush();
+        } finally {
+            line.stop();
+            line.close();
         }
-        line.flush();
     }
 
     public void processCapturedSamples(PipedInputStream inputStream) throws IOException {
@@ -85,9 +91,7 @@ public class AudioProcessor {
         int stepSize = windowSize - overlap;
         int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
         double[][] spectrogram = new double[numberOfWindows][windowSize / 2];
-
         double[] window = new double[windowSize];
-        int sampleRate = (int) audioFormat.getSampleRate();
 
         // Hamming window function
         for(int i = 0; i < windowSize; i++) {
@@ -138,14 +142,5 @@ public class AudioProcessor {
             LOGGER.debug("There was no DataLine available for the application to acquire");
         }
         return line;
-    }
-
-    private static double[] convertQueueToDoubleArray(ConcurrentLinkedQueue<Short> queue) {
-        Object[] objectArray = queue.toArray();
-        double[] doubleArray = new double[objectArray.length];
-        for(int i = 0; i < objectArray.length; i++){
-            doubleArray[i] = (double) objectArray[i];
-        }
-        return doubleArray;
     }
 }

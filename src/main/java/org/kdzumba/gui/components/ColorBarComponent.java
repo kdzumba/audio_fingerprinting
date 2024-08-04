@@ -1,5 +1,7 @@
 package org.kdzumba.gui.components;
 
+import org.kdzumba.utils.UIUtils;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -26,7 +28,7 @@ public class ColorBarComponent extends JComponent {
         // Draw gradient bar
         for (int y = 0; y < height; y++) {
             float ratio = (float) y / (float) height;
-            Color color = getColorForRatio(ratio);
+            Color color = UIUtils.getColorForRatio(colors, ratio);
             g2d.setColor(color);
             g2d.drawLine(0, y, width - 30, y); // Leave space for labels and ticks
         }
@@ -50,21 +52,4 @@ public class ColorBarComponent extends JComponent {
     public Dimension getPreferredSize() {
         return new Dimension(55, 200);
     }
-
-    private Color getColorForRatio(float ratio) {
-        int index = (int) (ratio * (colors.length - 1));
-        float fraction = ratio * (colors.length - 1) - index;
-
-        if (index >= colors.length - 1) {
-            return colors[colors.length - 1];
-        } else {
-            Color color1 = colors[index];
-            Color color2 = colors[index + 1];
-            int red = (int) (color1.getRed() * (1 - fraction) + color2.getRed() * fraction);
-            int green = (int) (color1.getGreen() * (1 - fraction) + color2.getGreen() * fraction);
-            int blue = (int) (color1.getBlue() * (1 - fraction) + color2.getBlue() * fraction);
-            return new Color(red, green, blue);
-        }
-    }
-
 }

@@ -24,4 +24,20 @@ public class UIUtils {
             line.draw(g);
         }
     }
+
+    public static Color getColorForRatio(Color[] colors, float ratio) {
+        int index = (int) (ratio * (colors.length - 1));
+        float fraction = ratio * (colors.length - 1) - index;
+
+        if (index >= colors.length - 1) {
+            return colors[colors.length - 1];
+        } else {
+            Color color1 = colors[index];
+            Color color2 = colors[index + 1];
+            int red = (int) (color1.getRed() * (1 - fraction) + color2.getRed() * fraction);
+            int green = (int) (color1.getGreen() * (1 - fraction) + color2.getGreen() * fraction);
+            int blue = (int) (color1.getBlue() * (1 - fraction) + color2.getBlue() * fraction);
+            return new Color(red, green, blue);
+        }
+    }
 }

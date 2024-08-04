@@ -30,7 +30,7 @@ public class AudioVisualizerPanel extends JPanel {
         this.add(audioVisualizer);
         this.add(Box.createVerticalStrut(10));
 
-        spectrogram = new SpectrogramComponent();
+        spectrogram = new SpectrogramComponent(audioProcessor.getAudioFormat());
         Color[] colors = {Color.BLUE, Color.CYAN, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.RED};
         colorBar = new ColorBarComponent(colors, 0, 100, 10);
 
