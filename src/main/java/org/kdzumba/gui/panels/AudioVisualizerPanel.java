@@ -9,6 +9,7 @@ import javax.swing.*;
 
 import java.awt.*;
 import java.io.IOException;
+import java.util.List;
 
 public class AudioVisualizerPanel extends JPanel {
     private final TimeAmplitudeGraphComponent audioVisualizer;
@@ -26,6 +27,7 @@ public class AudioVisualizerPanel extends JPanel {
         this.add(Box.createVerticalStrut(10));
 
         spectrogram = new SpectrogramComponent(audioProcessor.getAudioFormat());
+
         Color[] colors = {Color.BLUE, Color.CYAN, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.RED};
         colorBar = new ColorBarComponent(colors, 0, 100, 10);
 
@@ -62,36 +64,51 @@ public class AudioVisualizerPanel extends JPanel {
     private JButton getCaptureButton() {
         JButton captureAudioButton = new JButton("Capture Audio");
         captureAudioButton.addActionListener((e) -> {
-            startCaptureThread();
-            Timer timer = new Timer(50, event -> audioVisualizer.repaint());
-            timer.start();
+            try {
+                startCaptureThread();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         });
         return captureAudioButton;
     }
 
     private JButton getStopCaptureButton() {
         JButton stopAudioCapture = new JButton("Stop");
-        stopAudioCapture.addActionListener((e) -> {
-            audioProcessor.stopCapture();
-        });
+        stopAudioCapture.addActionListener((e) -> audioProcessor.stopCapture());
         return stopAudioCapture;
     }
 
-    private void startCaptureThread() {
-        new Thread(() -> {
-            try {
+    private void startCaptureThread() throws IOException {
+        SwingWorker<Void, double[][]> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
                 audioProcessor.startCapture();
-                audioVisualizer.repaint();
-                // Generate spectrogram data and update the SpectrogramComponent
-                if(!audioProcessor.getSamples().isEmpty()) {
-                    double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
-                    spectrogram.setSpectrogramData(spectrogramData);
+                while(audioProcessor.capturing) {
+                    if(!audioProcessor.getSamples().isEmpty()) {
+                        double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
+                        publish(spectrogramData);
+                    }
                 }
-                spectrogram.repaint();
-            } catch(IOException exception) {
-                System.out.println("An IOException occurred when capturing samples");
+                return null;
             }
-        }).start();
+
+            @Override
+            protected void process(List<double[][]> chunks) {
+                if(!chunks.isEmpty()) {
+                    double[][] latestSpectrogramData = chunks.get(chunks.size() - 1);
+                    spectrogram.setSpectrogramData(latestSpectrogramData);
+                }
+            }
+        };
+
+        worker.execute();
+
+        Timer timer = new Timer(50, event -> {
+            audioVisualizer.repaint();
+            spectrogram.repaint();
+        });
+        timer.start();
     }
 
     private void toggleGrid() {

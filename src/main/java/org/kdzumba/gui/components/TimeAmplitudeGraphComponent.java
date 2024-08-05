@@ -59,7 +59,7 @@ public class TimeAmplitudeGraphComponent extends JComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        int WIDTH = 600;
+        int WIDTH = 800;
         int HEIGHT = 200;
         return new Dimension(WIDTH, HEIGHT);
     }

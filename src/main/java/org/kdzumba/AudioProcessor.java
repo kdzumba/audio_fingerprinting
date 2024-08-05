@@ -61,9 +61,8 @@ public class AudioProcessor {
                 captureAudioDataFromMicrophone(outputStream);
             } catch(IOException exception){
                 System.out.println("An IOException occurred when capturing audio samples");
-                exception.printStackTrace();
             }
-        });
+        }, "Capture Thread");
 
         Thread processThread = new Thread(() -> {
             try {
@@ -71,7 +70,7 @@ public class AudioProcessor {
             } catch(Exception exception) {
                 System.out.println("An IOException occurred when processing captured samples");
             }
-        });
+        }, "Process Thread");
 
         captureThread.start();
         processThread.start();
@@ -102,6 +101,7 @@ public class AudioProcessor {
         Objects.requireNonNull(line).start();
         try (outputStream) {
             while (capturing) {
+                System.out.println(Thread.currentThread().getName());
                 numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
                 outputStream.write(writeBuffer, 0, numberOfBytesRead);
             }
@@ -116,6 +116,7 @@ public class AudioProcessor {
         byte[] readBuffer = new byte[4096];
 
         while (capturing) {
+            System.out.println(Thread.currentThread().getName());
             int totalBytesRead = 0;
             while(totalBytesRead < numberOfBytesRead) {
                 int bytesRead = inputStream.read(readBuffer, totalBytesRead, numberOfBytesRead - totalBytesRead);
@@ -127,12 +128,13 @@ public class AudioProcessor {
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-            for(short sample : samplesArray) {
-                if(samples.size() >= BUFFER_SIZE) {
-                    samples.poll();
+            if(totalBytesRead > 0) {
+                for(short sample : samplesArray) {
+                    if(samples.size() >= BUFFER_SIZE) {
+                        samples.poll();
+                    }
+                    samples.add(sample);
                 }
-                System.out.println("Adding sample: " + sample);
-                samples.add(sample);
             }
         }
     }

@@ -12,7 +12,7 @@ import static org.kdzumba.gui.common.Constants.SPECTROGRAM_GRADIENT;
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class SpectrogramComponent extends JComponent {
-    private final int WIDTH = 540;
+    private final int WIDTH = 740;
     private final int HEIGHT = 500;
     private double[][] spectrogramData;
     private final AudioFormat audioFormat;
@@ -23,7 +23,6 @@ public class SpectrogramComponent extends JComponent {
 
     public void setSpectrogramData(double[][] spectrogramData) {
         this.spectrogramData = spectrogramData;
-        repaint();
     }
 
     private void drawSpectrogram(Graphics g) {
@@ -32,8 +31,8 @@ public class SpectrogramComponent extends JComponent {
         int numberOfRows = spectrogramData.length;
         int numberOfCols = spectrogramData[0].length;
 
-        double colWidth = (double) getWidth() / numberOfCols;
-        double rowHeight = (double) getHeight() / numberOfRows;
+        double colWidth = (double) getWidth() / numberOfRows;
+        double rowHeight = (double) getHeight() / numberOfCols;
 
         Range fromRange = getIntensityRange(numberOfRows, numberOfCols);
         Range toRange = new Range(0.0, 1.0);
@@ -44,12 +43,12 @@ public class SpectrogramComponent extends JComponent {
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
                 g.setColor(color);
-                g.fillRect((int) (j * colWidth), (int) (i * rowHeight), (int) colWidth, (int) rowHeight);
+                g.fillRect((int) (i * colWidth), (int) (j * rowHeight), (int) colWidth, (int) rowHeight);
             }
         }
 
-        drawTimeTicks(g, numberOfCols, colWidth);
-        drawFrequencyTicks(g, numberOfRows, rowHeight);
+        drawTimeTicks(g, numberOfRows, colWidth);
+        drawFrequencyTicks(g, numberOfCols, rowHeight);
     }
 
     private Range getIntensityRange(int numberOfRows, int numberOfCols) {
@@ -76,20 +75,20 @@ public class SpectrogramComponent extends JComponent {
         return new Range(minIntensity, maxIntensity);
     }
 
-    private void drawTimeTicks(Graphics g, int numberOfCols, double colWidth) {
+    private void drawTimeTicks(Graphics g, int numberOfRows, double colWidth) {
         g.setColor(Color.BLACK);
         double windowDuration = (double) 1024 / audioFormat.getSampleRate(); // Example window size
-        for (int j = 0; j < numberOfCols; j += numberOfCols / 10) {
+        for (int j = 0; j < numberOfRows; j += numberOfRows / 10) {
             int x = (int) (j * colWidth);
             g.drawLine(x, HEIGHT, x, HEIGHT + 10);
             g.drawString(String.format("%.2f", j * windowDuration), x, HEIGHT + 20);
         }
     }
 
-    private void drawFrequencyTicks(Graphics g, int numberOfRows, double rowHeight) {
+    private void drawFrequencyTicks(Graphics g, int numberOfCols, double rowHeight) {
         g.setColor(Color.BLACK);
         double binFrequency = (double) audioFormat.getSampleRate() / 1024; // Example window size
-        for (int i = 0; i < numberOfRows; i += numberOfRows / 10) {
+        for (int i = 0; i < numberOfCols; i += numberOfCols / 10) {
             int y = (int) (i * rowHeight);
             g.drawLine(0, y, 10, y);
             g.drawString(String.format("%.2f", i * binFrequency), 15, y);
