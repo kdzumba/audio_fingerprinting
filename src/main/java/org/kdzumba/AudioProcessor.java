@@ -175,15 +175,23 @@ public class AudioProcessor {
                 spectrogram[i][j] = result[j].abs();
             }
         }
-
-        AudioFingerprinter fingerprinter = new AudioFingerprinter(spectrogram, 44100, windowSize);
-        List<Landmark> landmarks = fingerprinter.extractLandmarks();
-//        List<Fingerprint> fingerprints = fingerprinter.generateFingerprints(landmarks);
-
-//        for(Fingerprint fingerprint : fingerprints) {
-//            System.out.println(fingerprint);
-//        }
         return spectrogram;
+    }
+
+    public double[] getSpectrumMagnitudes() {
+        FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
+        double[] doubleSamples = new double[samplesArray.length];
+        double[] magnitudes = new double[samplesArray.length / 2];
+
+        for(int i = 0; i < samplesArray.length; i++) {
+            doubleSamples[i] = samplesArray[i];
+        }
+
+        Complex[] fft = transformer.transform(doubleSamples, TransformType.FORWARD);
+        for(int i = 0; i < fft.length / 2; i++) {
+            magnitudes[i] = Math.pow(fft[i].abs(), 2);
+        }
+        return magnitudes;
     }
 
     private TargetDataLine getTargetDataLine() {

@@ -2,6 +2,7 @@ package org.kdzumba.gui.panels;
 
 import org.kdzumba.AudioProcessor;
 import org.kdzumba.gui.components.ColorBarComponent;
+import org.kdzumba.gui.components.FrequencySpectrumComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
 
@@ -14,6 +15,7 @@ import java.util.List;
 public class AudioVisualizerPanel extends JPanel {
     private final TimeAmplitudeGraphComponent audioVisualizer;
     private final SpectrogramComponent spectrogram;
+    private final FrequencySpectrumComponent frequencySpectrum;
     private final AudioProcessor audioProcessor = new AudioProcessor();
     private final ColorBarComponent colorBar;
 
@@ -24,6 +26,10 @@ public class AudioVisualizerPanel extends JPanel {
 
         audioVisualizer = new TimeAmplitudeGraphComponent(audioProcessor.getSamplesArray());
         this.add(audioVisualizer);
+        this.add(Box.createVerticalStrut(10));
+
+        frequencySpectrum = new FrequencySpectrumComponent();
+        this.add(frequencySpectrum);
         this.add(Box.createVerticalStrut(10));
 
         spectrogram = new SpectrogramComponent(audioProcessor.getAudioFormat());
@@ -102,11 +108,33 @@ public class AudioVisualizerPanel extends JPanel {
             }
         };
 
+//        SwingWorker<Void, double[]> frequencySpectrumWorker = new SwingWorker<>() {
+//            @Override
+//            protected Void doInBackground() {
+//                System.out.println("Frequency spectrum worker background..........");
+//                while(audioProcessor.capturing) {
+//                    double[] magnitudes = audioProcessor.getSpectrumMagnitudes();
+//                    publish(magnitudes);
+//                }
+//                return null;
+//            }
+//
+//            @Override
+//            protected void process(List<double[]> chunks) {
+//                if(!chunks.isEmpty()) {
+//                    double[] magnitudes = chunks.get(chunks.size() - 1);
+//                    frequencySpectrum.setMagnitudes(magnitudes);
+//                }
+//            }
+//        };
+//
+//        frequencySpectrumWorker.execute();
         worker.execute();
 
         Timer timer = new Timer(50, event -> {
             audioVisualizer.repaint();
             spectrogram.repaint();
+            frequencySpectrum.repaint();
         });
         timer.start();
     }
