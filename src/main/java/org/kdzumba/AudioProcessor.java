@@ -22,6 +22,7 @@ public class AudioProcessor {
     private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
     private final short[] samplesArray = new short[4096 / 2];;
     private static final int BUFFER_SIZE = 44100; // Max number of samples to store
+    private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     public boolean capturing = false;
     private int numberOfBytesRead;
@@ -95,13 +96,12 @@ public class AudioProcessor {
 
     public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
         line = getTargetDataLine();
-        byte[] writeBuffer = new byte[4096];
+        byte[] writeBuffer = new byte[PIPED_STREAM_BUFFER_SIZE];
 
         // Start Capturing Audio
         Objects.requireNonNull(line).start();
         try (outputStream) {
             while (capturing) {
-                System.out.println(Thread.currentThread().getName());
                 numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
                 outputStream.write(writeBuffer, 0, numberOfBytesRead);
             }
@@ -113,14 +113,13 @@ public class AudioProcessor {
     }
 
     public void processCapturedSamples(PipedInputStream inputStream) throws IOException {
-        byte[] readBuffer = new byte[4096];
+        byte[] readBuffer = new byte[PIPED_STREAM_BUFFER_SIZE];
 
         while (capturing) {
-            System.out.println(Thread.currentThread().getName());
             int totalBytesRead = 0;
-            while(totalBytesRead < numberOfBytesRead) {
+            while (totalBytesRead < numberOfBytesRead) {
                 int bytesRead = inputStream.read(readBuffer, totalBytesRead, numberOfBytesRead - totalBytesRead);
-                if(bytesRead == -1) {
+                if (bytesRead == -1) {
                     break;
                 }
                 totalBytesRead += bytesRead;
@@ -128,9 +127,9 @@ public class AudioProcessor {
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-            if(totalBytesRead > 0) {
-                for(short sample : samplesArray) {
-                    if(samples.size() >= BUFFER_SIZE) {
+            if (totalBytesRead > 0) {
+                for (short sample : samplesArray) {
+                    if (samples.size() >= BUFFER_SIZE) {
                         samples.poll();
                     }
                     samples.add(sample);
