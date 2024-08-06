@@ -6,6 +6,8 @@ import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.transform.DftNormalization;
 import org.apache.commons.math3.transform.FastFourierTransformer;
 import org.apache.commons.math3.transform.TransformType;
+import org.kdzumba.dataModels.Fingerprint;
+import org.kdzumba.dataModels.Landmark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -173,6 +175,14 @@ public class AudioProcessor {
                 spectrogram[i][j] = result[j].abs();
             }
         }
+
+        AudioFingerprinter fingerprinter = new AudioFingerprinter(spectrogram, 44100, windowSize);
+        List<Landmark> landmarks = fingerprinter.extractLandmarks();
+//        List<Fingerprint> fingerprints = fingerprinter.generateFingerprints(landmarks);
+
+//        for(Fingerprint fingerprint : fingerprints) {
+//            System.out.println(fingerprint);
+//        }
         return spectrogram;
     }
 
