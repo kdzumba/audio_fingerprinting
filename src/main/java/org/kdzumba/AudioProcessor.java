@@ -31,6 +31,7 @@ public class AudioProcessor {
     private PipedInputStream inputStream;
     private PipedOutputStream outputStream;
     private TargetDataLine line;
+    double[][] previousSpectrogram = new double[85][44100];
 
     public AudioProcessor() {
         // The audio format tells Java how to interpret and handle the bits of information

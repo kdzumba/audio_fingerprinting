@@ -7,6 +7,7 @@ import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
 
 import javax.swing.*;
+import javax.swing.border.BevelBorder;
 
 import java.awt.*;
 import java.io.IOException;
@@ -15,7 +16,7 @@ import java.util.List;
 public class AudioVisualizerPanel extends JPanel {
     private final TimeAmplitudeGraphComponent audioVisualizer;
     private final SpectrogramComponent spectrogram;
-    private final FrequencySpectrumComponent frequencySpectrum;
+//    private final FrequencySpectrumComponent frequencySpectrum;
     private final AudioProcessor audioProcessor = new AudioProcessor();
     private final ColorBarComponent colorBar;
 
@@ -28,9 +29,9 @@ public class AudioVisualizerPanel extends JPanel {
         this.add(audioVisualizer);
         this.add(Box.createVerticalStrut(10));
 
-        frequencySpectrum = new FrequencySpectrumComponent();
-        this.add(frequencySpectrum);
-        this.add(Box.createVerticalStrut(10));
+//        frequencySpectrum = new FrequencySpectrumComponent();
+//        this.add(frequencySpectrum);
+//        this.add(Box.createVerticalStrut(10));
 
         spectrogram = new SpectrogramComponent(audioProcessor.getAudioFormat());
 
@@ -38,6 +39,7 @@ public class AudioVisualizerPanel extends JPanel {
         colorBar = new ColorBarComponent(colors, 0, 100, 10);
 
         JPanel spectrogramPanel = new JPanel();
+        spectrogramPanel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
         spectrogramPanel.setLayout(new BoxLayout(spectrogramPanel, BoxLayout.X_AXIS));
         spectrogramPanel.add(spectrogram);
         spectrogramPanel.add(Box.createHorizontalStrut(10));
@@ -134,7 +136,7 @@ public class AudioVisualizerPanel extends JPanel {
         Timer timer = new Timer(50, event -> {
             audioVisualizer.repaint();
             spectrogram.repaint();
-            frequencySpectrum.repaint();
+//            frequencySpectrum.repaint();
         });
         timer.start();
     }

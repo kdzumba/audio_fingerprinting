@@ -29,9 +29,9 @@ public class TimeAmplitudeGraphComponent extends JComponent {
 
         double x = 0;
         for(Short sample : samplesArray) {
-            MathUtils.Range samplingRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
+            MathUtils.Range sampleRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
             MathUtils.Range displayRange = new MathUtils.Range(midHeight * -1, midHeight);
-            double normalizedY = MathUtils.convertToRange(sample, samplingRange, displayRange);
+            double normalizedY = MathUtils.convertToRange(sample, sampleRange, displayRange);
 
             Coordinate start = new Coordinate(x, midHeight);
             Coordinate end = new Coordinate(x, midHeight - normalizedY);

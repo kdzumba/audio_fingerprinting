@@ -25,6 +25,25 @@ public class UIUtils {
         }
     }
 
+    public static void showGrid(Graphics g, int startX, int startY, int width, int height) {
+        int BLOCK_SIZE = 10;
+        for(int i = 0; i < width; i ++) {
+            // Create a new line at every ith multiple of BLOCK_SIZE
+            Coordinate start = new Coordinate(i * BLOCK_SIZE + startX, 0);
+            Coordinate end = new Coordinate(i * BLOCK_SIZE + startX, height);
+            Line line = new Line(start, end);
+            line.draw(g);
+        }
+
+        for(int j = 0; j < height; j++) {
+            // Create a new vertical line for every jth multiple of BLOCK_SIZE
+            Coordinate start = new Coordinate(startX, j * BLOCK_SIZE + startY);
+            Coordinate end = new Coordinate(width, j * BLOCK_SIZE + startY);
+            Line line = new Line(start, end);
+            line.draw(g);
+        }
+    }
+
     public static Color getColorForRatio(Color[] colors, float ratio) {
         int index = (int) (ratio * (colors.length - 1));
         float fraction = ratio * (colors.length - 1) - index;
