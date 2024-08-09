@@ -1,46 +1,52 @@
 package org.kdzumba;
 
-import javax.sound.sampled.*;
-
 import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.transform.DftNormalization;
 import org.apache.commons.math3.transform.FastFourierTransformer;
 import org.apache.commons.math3.transform.TransformType;
-import org.kdzumba.dataModels.Fingerprint;
-import org.kdzumba.dataModels.Landmark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.sound.sampled.*;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.*;
+import java.util.Iterator;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.kdzumba.utils.MathUtils;
+
 public class AudioProcessor {
+    //region private fields
     private final AudioFormat audioFormat;
-    private final ConcurrentLinkedQueue<Short> samples = new ConcurrentLinkedQueue<>();
-    private final short[] samplesArray = new short[4096 / 2];;
-    private static final int BUFFER_SIZE = 44100; // Max number of samples to store
-    private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
-    private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
-    public boolean capturing = false;
+    public final ConcurrentLinkedQueue<Short> samples;
+    private final short[] samplesArray;
+    public boolean capturing;
+    public boolean generatingSpectrogram;
     private int numberOfBytesRead;
     private PipedInputStream inputStream;
     private PipedOutputStream outputStream;
     private TargetDataLine line;
-    double[][] previousSpectrogram = new double[85][44100];
+    //endregion
 
+    //region static fields
+    private static final int BUFFER_SIZE = 22050; // Max number of samples to store
+    private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
+    private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
+    //endregion
+
+    //region ctor
     public AudioProcessor() {
-        // The audio format tells Java how to interpret and handle the bits of information
+        // The audio format tells the application how to interpret and handle the bits of information
         // in the incoming sound stream.
 
-        float SAMPLE_RATE = 44100f;     // Rate at which an audio file is sampled (Hz)
+        float SAMPLE_RATE = 44_100;     // Rate at which an audio file is sampled (Hz)
         int SAMPLE_SIZE_IN_BITS = 16;   // Number of bits used to represent each sample of the audio. Determines
                                         // the bit depth for the audio signal
-        int CHANNELS = 2;               // Mono or Stereo Sound
+        int CHANNELS = 2;               // Stereo sound = 2 samples per frame (2 * 16 bits = 32 bits per frame)
         boolean SIGNED = true;
         boolean BIG_ENDIAN = true;
 
@@ -49,16 +55,22 @@ public class AudioProcessor {
                 CHANNELS,
                 SIGNED,
                 BIG_ENDIAN);
-    }
 
+        samples = new ConcurrentLinkedQueue<>();
+        samplesArray = new short[PIPED_STREAM_BUFFER_SIZE/(SAMPLE_SIZE_IN_BITS / 8)];
+        capturing = false;
+    }
+    //endregion
+
+    //region public methods
     public AudioFormat getAudioFormat() {
         return audioFormat;
     }
 
     public void startCapture() throws IOException {
         capturing = true;
-        inputStream = new PipedInputStream();
-        outputStream = new PipedOutputStream(inputStream);
+        inputStream = new PipedInputStream();   // Data read from the PipedOutput stream is read from here
+        outputStream = new PipedOutputStream(inputStream); // Data read from the data line is written here
 
         Thread captureThread = new Thread(() -> {
             try{
@@ -130,10 +142,12 @@ public class AudioProcessor {
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
+            //this.generateSinusoidData(4000);
+
             if (totalBytesRead > 0) {
                 for (short sample : samplesArray) {
                     if (samples.size() >= BUFFER_SIZE) {
-                        samples.poll();
+                        this.generatingSpectrogram = true;
                     }
                     samples.add(sample);
                 }
@@ -176,6 +190,7 @@ public class AudioProcessor {
                 spectrogram[i][j] = result[j].abs();
             }
         }
+
         return spectrogram;
     }
 
@@ -194,11 +209,16 @@ public class AudioProcessor {
         }
         return magnitudes;
     }
+    //endregion
 
+    //region private methods
     private TargetDataLine getTargetDataLine() {
-        TargetDataLine line = null;
-        AudioFormat format = getAudioFormat();
-        DataLine.Info info = new DataLine.Info(TargetDataLine.class, format);
+        if(line != null) {
+            line.stop();
+            line.close();
+        }
+
+        DataLine.Info info = new DataLine.Info(TargetDataLine.class, this.audioFormat);
 
         if (!AudioSystem.isLineSupported(info)) {
             LOGGER.debug("Failed to access the DataLine with given type and format as it's not supported in this system");
@@ -207,10 +227,27 @@ public class AudioProcessor {
 
         try {
             line = (TargetDataLine) AudioSystem.getLine(info);
-            line.open(format);
+            line.open(this.audioFormat);
         } catch(LineUnavailableException exception) {
             LOGGER.debug("There was no DataLine available for the application to acquire");
         }
         return line;
     }
+
+
+    private void generateSinusoidData(int frequency) {
+      if(!this.generatingSpectrogram) {
+        for(int i = 0; i < BUFFER_SIZE; i++) {
+            short sample = (short) (Math.sin(2 * Math.PI * frequency * i / audioFormat.getSampleRate()) * Short.MAX_VALUE);
+            if(samples.size() >= BUFFER_SIZE) {
+                this.generatingSpectrogram = true;
+            }
+
+            if(this.generatingSpectrogram != true) {
+                samples.add(sample); 
+            }
+        }
+      }
+    }
+    //endregion
 }

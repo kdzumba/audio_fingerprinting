@@ -39,6 +39,7 @@ public class AudioVisualizerPanel extends JPanel {
         colorBar = new ColorBarComponent(colors, 0, 100, 10);
 
         JPanel spectrogramPanel = new JPanel();
+        this.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
         spectrogramPanel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
         spectrogramPanel.setLayout(new BoxLayout(spectrogramPanel, BoxLayout.X_AXIS));
         spectrogramPanel.add(spectrogram);
@@ -93,7 +94,8 @@ public class AudioVisualizerPanel extends JPanel {
             protected Void doInBackground() throws Exception {
                 audioProcessor.startCapture();
                 while(audioProcessor.capturing) {
-                    if(!audioProcessor.getSamples().isEmpty()) {
+                    System.out.println("");
+                    if(audioProcessor.generatingSpectrogram) {
                         double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
                         publish(spectrogramData);
                     }
@@ -106,6 +108,9 @@ public class AudioVisualizerPanel extends JPanel {
                 if(!chunks.isEmpty()) {
                     double[][] latestSpectrogramData = chunks.get(chunks.size() - 1);
                     spectrogram.setSpectrogramData(latestSpectrogramData);
+                    System.out.println("Length of the spectrogram: " + latestSpectrogramData.length);
+                    //audioProcessor.samples.clear();
+                    audioProcessor.generatingSpectrogram = false;
                 }
             }
         };
