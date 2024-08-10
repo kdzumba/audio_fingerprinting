@@ -90,7 +90,7 @@ public class SpectrogramComponent extends JComponent {
         FontMetrics fm = g2d.getFontMetrics();
         String label = "Frequency (Hz)";
         int x = (WIDTH - fm.stringWidth(label)) / 2;
-        int yPos = -95; //(getHeight() + fm.getAscent()) / 2;
+        int yPos = -140; //(getHeight() + fm.getAscent()) / 2;
         g2d.drawString("Frequency (kHz)", x, yPos);
         g2d.setTransform(original);
 

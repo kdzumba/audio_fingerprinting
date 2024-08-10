@@ -142,19 +142,8 @@ public class AudioProcessor {
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-//            this.generateSinusoidData(13180);
+            this.generateSinusoidData(13180);
 
-            if (totalBytesRead > 0) {
-                if (samples.size() >= BUFFER_SIZE) {
-                    this.generatingSpectrogram = true;
-                }
-
-                if(!this.generatingSpectrogram) {
-                    for (short sample : samplesArray) {
-                        samples.add(sample);
-                    }
-                }
-            }
        }
     }
 
@@ -192,6 +181,7 @@ public class AudioProcessor {
 
             // Compute Magnitude
             for(int j = 0; j < windowSize / 2; j++) {
+                // Square of the magnitude here to get the power of the frequency j at time i
                 spectrogram[i][j] = Math.pow(result[j].abs(), 2);
             }
         }
