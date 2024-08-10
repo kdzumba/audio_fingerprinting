@@ -17,6 +17,9 @@ public class SpectrogramComponent extends JComponent {
     private final int HEIGHT = 512;
     private double[][] spectrogramData;
     private final AudioFormat audioFormat;
+    private int currentTimeCol = 0;
+    private Timer animationTimer;
+    private boolean animationStarted = false;
 
     public SpectrogramComponent(AudioFormat format) {
         this.audioFormat = format;
@@ -24,10 +27,13 @@ public class SpectrogramComponent extends JComponent {
 
     public void setSpectrogramData(double[][] spectrogramData) {
         this.spectrogramData = spectrogramData;
+        repaint();
     }
 
-    private void drawSpectrogram(Graphics g) {
+    private void drawSpectrogram(int upToColumn) {
         if(spectrogramData == null) return;
+        
+        Graphics g = getGraphics();
 
         int numberOfWindows = spectrogramData.length; // Each window represent time
         int numberOfBins = spectrogramData[0].length; // Each bin represent frequency
@@ -38,15 +44,35 @@ public class SpectrogramComponent extends JComponent {
         Range fromRange = getIntensityRange(numberOfWindows, numberOfBins);
         Range toRange = new Range(0.0, 1.0);
 
-        for(int i = 0; i < numberOfWindows; i++) {
+        for(int i = 0; i < upToColumn; i++) {
             for(int j = 0; j < numberOfBins; j++) {
                 float intensity = (float) Math.log1p(spectrogramData[i][j]);
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
                 g.setColor(color);
-                g.fillRect((int) (i * colWidth + 80), (int) (j * rowHeight), (int) colWidth + 80, (int) rowHeight);
+                g.fillRect((int) (i * colWidth + 80), (int) (j * rowHeight + 20), (int) colWidth + 80, (int) rowHeight);
             }
         }
+    }
+
+    private void startSpectrogramAnimation() {
+      if(this.spectrogramData != null) {
+
+        int numberOfWindows = spectrogramData.length;
+        int duration = 1000;
+        int delay = duration / numberOfWindows;
+        this.animationTimer = new Timer(delay, e -> {
+            if(this.currentTimeCol < this.spectrogramData.length) {
+                this.drawSpectrogram(this.currentTimeCol);
+                this.currentTimeCol++;
+            } else {
+                this.currentTimeCol = 0;
+            }
+        });
+        this.animationTimer.start();
+      } else {
+          this.animationStarted = false;
+      }
     }
 
     private Range getIntensityRange(int numberOfRows, int numberOfCols) {
@@ -78,8 +104,8 @@ public class SpectrogramComponent extends JComponent {
         double windowDuration = (double) 1024 / audioFormat.getSampleRate(); // Example window size
         for (int j = 0; j < 85; j += 85 / 10) {
             int x = (int) (j * WIDTH / 85) + 80;
-            g.drawLine(x, HEIGHT, x, HEIGHT + 10);
-            g.drawString(String.format("%.2f", j * windowDuration), x, HEIGHT + 20);
+            g.drawLine(x, HEIGHT + 20, x, HEIGHT + 30);
+            g.drawString(String.format("%.2f", j * windowDuration), x, HEIGHT + 40);
         }
     }
 
@@ -90,14 +116,14 @@ public class SpectrogramComponent extends JComponent {
         FontMetrics fm = g2d.getFontMetrics();
         String label = "Frequency (Hz)";
         int x = (WIDTH - fm.stringWidth(label)) / 2;
-        int yPos = -140; //(getHeight() + fm.getAscent()) / 2;
+        int yPos = -130; //(getHeight() + fm.getAscent()) / 2;
         g2d.drawString("Frequency (kHz)", x, yPos);
         g2d.setTransform(original);
 
         g.setColor(Color.BLACK);
         double binFrequency = (double) audioFormat.getSampleRate() / 1024;
         for (int i = 0; i < 512; i += 512 / 10) {
-            int y = (int) (i);
+            int y = (int) (i + 20);
             g.drawLine(65, y, 80, y);
             g.drawString(String.format("%.2f", (i * binFrequency) / 1000), 25, y);
         }
@@ -108,16 +134,22 @@ public class SpectrogramComponent extends JComponent {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
         g2d.setColor(VISUALIZER_BACKGROUND_COLOR);
-        g2d.fillRect(80, 0, WIDTH, HEIGHT);
+        g2d.fillRect(80, 20, WIDTH, HEIGHT);
 
         //UIUtils.showGrid(g, 80, 0, WIDTH, HEIGHT - 5);
         drawTimeTicks(g);
         drawFrequencyTicks(g);
-        drawSpectrogram(g);
+
+        if(!animationStarted) {
+            animationStarted = true;
+            System.out.println("Starting the spectrogram animation");
+            startSpectrogramAnimation();
+        }
+        drawSpectrogram(currentTimeCol);
     }
 
     @Override
     public Dimension getPreferredSize() {
-        return new Dimension(WIDTH, HEIGHT + 30);
+        return new Dimension(WIDTH, HEIGHT + 50);
     }
 }

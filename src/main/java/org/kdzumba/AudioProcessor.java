@@ -16,10 +16,13 @@ import java.nio.ByteOrder;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.List;
+import java.util.ArrayList;
 
 import org.kdzumba.utils.MathUtils;
+import org.kdzumba.interfaces.*;
 
-public class AudioProcessor {
+public class AudioProcessor implements Publisher{
     //region private fields
     private final AudioFormat audioFormat;
     public final ConcurrentLinkedQueue<Short> samples;
@@ -30,6 +33,7 @@ public class AudioProcessor {
     private PipedInputStream inputStream;
     private PipedOutputStream outputStream;
     private TargetDataLine line;
+    private final List<Subscriber> subscribers;
     //endregion
 
     //region static fields
@@ -59,6 +63,7 @@ public class AudioProcessor {
         samples = new ConcurrentLinkedQueue<>();
         samplesArray = new short[PIPED_STREAM_BUFFER_SIZE/(SAMPLE_SIZE_IN_BITS / 8)];
         capturing = false;
+        subscribers = new ArrayList<>();
     }
     //endregion
 
@@ -142,15 +147,25 @@ public class AudioProcessor {
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-            this.generateSinusoidData(13180);
+//            this.generateSinusoidData(13180);
 
+            if (totalBytesRead > 0) {
+                if (samples.size() >= BUFFER_SIZE) {
+                    this.setGenerateSpectrogram();
+                }
+
+                if(!this.generatingSpectrogram) {
+                    for (short sample : samplesArray) {
+                        samples.add(sample);
+                    }
+                }
+            }
        }
     }
 
     public double[][] generateSpectrogram(int windowSize, int overlap) {
         int stepSize = windowSize - overlap;
 
-        System.out.println("Samples size: " + samples.size());
         int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
         double[][] spectrogram = new double[numberOfWindows][windowSize / 2];
         double[] window = new double[windowSize];
@@ -230,19 +245,27 @@ public class AudioProcessor {
     }
 
 
-    private void generateSinusoidData(int frequency) {
-      if(!this.generatingSpectrogram) {
-        for(int i = 0; i < BUFFER_SIZE; i++) {
-            short sample = (short) (Math.sin(2 * Math.PI * frequency * i / audioFormat.getSampleRate()) * Short.MAX_VALUE);
-            if(samples.size() >= BUFFER_SIZE) {
-                this.generatingSpectrogram = true;
-            }
-
-            if(this.generatingSpectrogram != true) {
-                samples.add(sample); 
-            }
-        }
-      }
+    public void setGenerateSpectrogram() {
+        this.generatingSpectrogram = true;
+        notifySubscribers();
+        this.generatingSpectrogram = false;
+        samples.clear();
     }
+
+    @Override 
+    public void addSubscriber(Subscriber subscriber) {
+        this.subscribers.add(subscriber);
+    }
+
+    @Override
+    public void removeSubscriber(Subscriber subscriber) {
+        this.subscribers.remove(subscriber);
+    }
+
+    @Override 
+    public void notifySubscribers() {
+        subscribers.forEach(Subscriber::update);
+    }
+
     //endregion
 }

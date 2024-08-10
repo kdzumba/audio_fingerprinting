@@ -2,9 +2,9 @@ package org.kdzumba.gui.panels;
 
 import org.kdzumba.AudioProcessor;
 import org.kdzumba.gui.components.ColorBarComponent;
-import org.kdzumba.gui.components.FrequencySpectrumComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
+import org.kdzumba.interfaces.Subscriber;
 
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
@@ -13,10 +13,9 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.List;
 
-public class AudioVisualizerPanel extends JPanel {
+public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private final TimeAmplitudeGraphComponent audioVisualizer;
     private final SpectrogramComponent spectrogram;
-//    private final FrequencySpectrumComponent frequencySpectrum;
     private final AudioProcessor audioProcessor = new AudioProcessor();
     private final ColorBarComponent colorBar;
 
@@ -28,10 +27,6 @@ public class AudioVisualizerPanel extends JPanel {
         audioVisualizer = new TimeAmplitudeGraphComponent(audioProcessor.getSamplesArray());
         this.add(audioVisualizer);
         this.add(Box.createVerticalStrut(10));
-
-//        frequencySpectrum = new FrequencySpectrumComponent();
-//        this.add(frequencySpectrum);
-//        this.add(Box.createVerticalStrut(10));
 
         spectrogram = new SpectrogramComponent(audioProcessor.getAudioFormat());
 
@@ -48,6 +43,8 @@ public class AudioVisualizerPanel extends JPanel {
 
         this.add(spectrogramPanel);
         this.add(controlsPanel);
+
+        this.audioProcessor.addSubscriber(this);
     }
 
     private JPanel getContentPanel() {
@@ -74,7 +71,7 @@ public class AudioVisualizerPanel extends JPanel {
         JButton captureAudioButton = new JButton("Capture Audio");
         captureAudioButton.addActionListener((e) -> {
             try {
-                startCaptureThread();
+                audioProcessor.startCapture();
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
@@ -88,66 +85,19 @@ public class AudioVisualizerPanel extends JPanel {
         return stopAudioCapture;
     }
 
-    private void startCaptureThread() throws IOException {
-        SwingWorker<Void, double[][]> worker = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() throws Exception {
-                audioProcessor.startCapture();
-                while(audioProcessor.capturing) {
-                    System.out.println("caputring");
-                    if(audioProcessor.generatingSpectrogram) {
-                        double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
-                        audioProcessor.generatingSpectrogram = false;
-                        audioProcessor.samples.clear();
-                        publish(spectrogramData);
-                    }
-                }
-                return null;
-            }
-
-            @Override
-            protected void process(List<double[][]> chunks) {
-                if(!chunks.isEmpty()) {
-                    double[][] latestSpectrogramData = chunks.get(chunks.size() - 1);
-                    spectrogram.setSpectrogramData(latestSpectrogramData);
-                    System.out.println("Length of the spectrogram: " + latestSpectrogramData.length);
-                }
-            }
-        };
-
-//        SwingWorker<Void, double[]> frequencySpectrumWorker = new SwingWorker<>() {
-//            @Override
-//            protected Void doInBackground() {
-//                System.out.println("Frequency spectrum worker background..........");
-//                while(audioProcessor.capturing) {
-//                    double[] magnitudes = audioProcessor.getSpectrumMagnitudes();
-//                    publish(magnitudes);
-//                }
-//                return null;
-//            }
-//
-//            @Override
-//            protected void process(List<double[]> chunks) {
-//                if(!chunks.isEmpty()) {
-//                    double[] magnitudes = chunks.get(chunks.size() - 1);
-//                    frequencySpectrum.setMagnitudes(magnitudes);
-//                }
-//            }
-//        };
-//
-//        frequencySpectrumWorker.execute();
-        worker.execute();
-
-        Timer timer = new Timer(50, event -> {
-            audioVisualizer.repaint();
-            spectrogram.repaint();
-//            frequencySpectrum.repaint();
-        });
-        timer.start();
-    }
-
     private void toggleGrid() {
         audioVisualizer.setShowGrid(!audioVisualizer.getShowGrid());
         audioVisualizer.repaint();
+    }
+    
+    @Override 
+    public void update() {
+        this.onGenerateSpectrogram();
+    }
+   
+
+    private void onGenerateSpectrogram() {
+        double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
+        spectrogram.setSpectrogramData(spectrogramData);
     }
 }
