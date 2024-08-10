@@ -33,7 +33,7 @@ public class AudioProcessor {
     //endregion
 
     //region static fields
-    private static final int BUFFER_SIZE = 22050; // Max number of samples to store
+    private static final int BUFFER_SIZE = 44100; // Max number of samples to store
     private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     //endregion
@@ -142,21 +142,26 @@ public class AudioProcessor {
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-            //this.generateSinusoidData(4000);
+//            this.generateSinusoidData(13180);
 
             if (totalBytesRead > 0) {
-                for (short sample : samplesArray) {
-                    if (samples.size() >= BUFFER_SIZE) {
-                        this.generatingSpectrogram = true;
+                if (samples.size() >= BUFFER_SIZE) {
+                    this.generatingSpectrogram = true;
+                }
+
+                if(!this.generatingSpectrogram) {
+                    for (short sample : samplesArray) {
+                        samples.add(sample);
                     }
-                    samples.add(sample);
                 }
             }
-        }
+       }
     }
 
     public double[][] generateSpectrogram(int windowSize, int overlap) {
         int stepSize = windowSize - overlap;
+
+        System.out.println("Samples size: " + samples.size());
         int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
         double[][] spectrogram = new double[numberOfWindows][windowSize / 2];
         double[] window = new double[windowSize];
@@ -187,7 +192,7 @@ public class AudioProcessor {
 
             // Compute Magnitude
             for(int j = 0; j < windowSize / 2; j++) {
-                spectrogram[i][j] = result[j].abs();
+                spectrogram[i][j] = Math.pow(result[j].abs(), 2);
             }
         }
 

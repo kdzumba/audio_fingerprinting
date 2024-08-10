@@ -94,9 +94,11 @@ public class AudioVisualizerPanel extends JPanel {
             protected Void doInBackground() throws Exception {
                 audioProcessor.startCapture();
                 while(audioProcessor.capturing) {
-                    System.out.println("");
+                    System.out.println("caputring");
                     if(audioProcessor.generatingSpectrogram) {
                         double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
+                        audioProcessor.generatingSpectrogram = false;
+                        audioProcessor.samples.clear();
                         publish(spectrogramData);
                     }
                 }
@@ -109,8 +111,6 @@ public class AudioVisualizerPanel extends JPanel {
                     double[][] latestSpectrogramData = chunks.get(chunks.size() - 1);
                     spectrogram.setSpectrogramData(latestSpectrogramData);
                     System.out.println("Length of the spectrogram: " + latestSpectrogramData.length);
-                    //audioProcessor.samples.clear();
-                    audioProcessor.generatingSpectrogram = false;
                 }
             }
         };
