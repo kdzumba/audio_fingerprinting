@@ -148,7 +148,7 @@ public class AudioProcessor implements Publisher{
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
             if (totalBytesRead > 0) {
-                if (samples.size() >= BUFFER_SIZE) {
+                if (samples.size() >= BUFFER_SIZE) { // when we get BUFFER_SIZE samples, we have 1 second worth of audio data
                     this.setGenerateSpectrogram();
                 }
 
