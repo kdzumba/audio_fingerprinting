@@ -244,7 +244,7 @@ public class AudioProcessor implements Publisher{
     public void setGenerateSpectrogram() {
         this.generatingSpectrogram = true;
         notifySubscribers();
-//        this.generatingSpectrogram = false;
+        this.generatingSpectrogram = false;
         samples.clear();
     }
 
