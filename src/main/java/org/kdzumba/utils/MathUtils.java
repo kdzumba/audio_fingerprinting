@@ -8,11 +8,6 @@ public class MathUtils {
   public static class Range {
     public double min;
     public double max;
-    
-    public Range() {
-      this.min = Float.MIN_VALUE;
-      this.max = Float.MAX_VALUE;
-    }
 
     public Range(double min, double max) {
       this.min = min;

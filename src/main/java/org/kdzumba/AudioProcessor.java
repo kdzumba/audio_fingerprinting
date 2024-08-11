@@ -37,7 +37,7 @@ public class AudioProcessor implements Publisher{
     //endregion
 
     //region static fields
-    private static final int BUFFER_SIZE = 44100; // Max number of samples to store
+    private static final int BUFFER_SIZE = 8192; // Max number of samples to store
     private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     //endregion
@@ -47,10 +47,10 @@ public class AudioProcessor implements Publisher{
         // The audio format tells the application how to interpret and handle the bits of information
         // in the incoming sound stream.
 
-        float SAMPLE_RATE = 44_100;     // Rate at which an audio file is sampled (Hz)
+        float SAMPLE_RATE = 8192;     // Rate at which an audio file is sampled (Hz)
         int SAMPLE_SIZE_IN_BITS = 16;   // Number of bits used to represent each sample of the audio. Determines
                                         // the bit depth for the audio signal
-        int CHANNELS = 2;               // Stereo sound = 2 samples per frame (2 * 16 bits = 32 bits per frame)
+        int CHANNELS = 1;               // Stereo sound = 2 samples per frame (2 * 16 bits = 32 bits per frame)
         boolean SIGNED = true;
         boolean BIG_ENDIAN = true;
 
@@ -147,8 +147,6 @@ public class AudioProcessor implements Publisher{
 
             ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
-//            this.generateSinusoidData(13180);
-
             if (totalBytesRead > 0) {
                 if (samples.size() >= BUFFER_SIZE) {
                     this.setGenerateSpectrogram();
@@ -200,7 +198,6 @@ public class AudioProcessor implements Publisher{
                 spectrogram[i][j] = Math.pow(result[j].abs(), 2);
             }
         }
-
         return spectrogram;
     }
 
@@ -244,11 +241,10 @@ public class AudioProcessor implements Publisher{
         return line;
     }
 
-
     public void setGenerateSpectrogram() {
         this.generatingSpectrogram = true;
         notifySubscribers();
-        this.generatingSpectrogram = false;
+//        this.generatingSpectrogram = false;
         samples.clear();
     }
 
@@ -266,6 +262,5 @@ public class AudioProcessor implements Publisher{
     public void notifySubscribers() {
         subscribers.forEach(Subscriber::update);
     }
-
     //endregion
 }

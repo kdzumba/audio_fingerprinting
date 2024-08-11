@@ -27,7 +27,6 @@ public class SpectrogramComponent extends JComponent {
 
     public void setSpectrogramData(double[][] spectrogramData) {
         this.spectrogramData = spectrogramData;
-        repaint();
     }
 
     private void drawSpectrogram(int upToColumn) {

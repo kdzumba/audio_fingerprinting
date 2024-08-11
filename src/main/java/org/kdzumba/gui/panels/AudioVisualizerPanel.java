@@ -11,7 +11,6 @@ import javax.swing.border.BevelBorder;
 
 import java.awt.*;
 import java.io.IOException;
-import java.util.List;
 
 public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private final TimeAmplitudeGraphComponent audioVisualizer;
@@ -94,10 +93,10 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     public void update() {
         this.onGenerateSpectrogram();
     }
-   
 
     private void onGenerateSpectrogram() {
         double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 512);
         spectrogram.setSpectrogramData(spectrogramData);
+        spectrogram.repaint();
     }
 }
