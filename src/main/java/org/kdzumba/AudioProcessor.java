@@ -37,7 +37,7 @@ public class AudioProcessor implements Publisher{
     //endregion
 
     //region static fields
-    private static final int BUFFER_SIZE = 8192; // Max number of samples to store
+    private static final int BUFFER_SIZE = 16384; // Max number of samples to store
     private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     //endregion
@@ -47,7 +47,7 @@ public class AudioProcessor implements Publisher{
         // The audio format tells the application how to interpret and handle the bits of information
         // in the incoming sound stream.
 
-        float SAMPLE_RATE = 8192;     // Rate at which an audio file is sampled (Hz)
+        float SAMPLE_RATE = 16384;     // Rate at which an audio file is sampled (Hz)
         int SAMPLE_SIZE_IN_BITS = 16;   // Number of bits used to represent each sample of the audio. Determines
                                         // the bit depth for the audio signal
         int CHANNELS = 1;               // Stereo sound = 2 samples per frame (2 * 16 bits = 32 bits per frame)
