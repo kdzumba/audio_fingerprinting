@@ -80,6 +80,7 @@ public class SpectrogramComponent extends JComponent {
                 } else {
                     this.currentTimeCol = 0;
                     isAnimating = false;
+                    repaint();
                     if(spectrogramDataBackBuffer != null) {
                         this.spectrogramData = spectrogramDataBackBuffer;
                         this.spectrogramDataBackBuffer = null;
@@ -153,7 +154,7 @@ public class SpectrogramComponent extends JComponent {
         g2d.setColor(VISUALIZER_BACKGROUND_COLOR);
         g2d.fillRect(80, 20, WIDTH, HEIGHT);
 
-        //UIUtils.showGrid(g, 80, 0, WIDTH, HEIGHT - 5);
+//        UIUtils.showGrid(g, 80, 40, WIDTH, HEIGHT - 5);
         drawTimeTicks(g);
         drawFrequencyTicks(g);
 
