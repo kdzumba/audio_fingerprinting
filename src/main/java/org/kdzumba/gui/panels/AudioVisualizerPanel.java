@@ -142,7 +142,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         spectrogram.setSpectrogramData(newSpectrogramData);
 
         double peakThreshold = 10.0;
-        int fanOut = 5;
+        int fanOut = 10;
         Set<FingerprintHash> fingerprints = audioProcessor.generateAudioFingerprint(cumulativeSpectrogramData, peakThreshold, fanOut);
 
         if (!shouldPerformMatch) {
