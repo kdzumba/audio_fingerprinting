@@ -10,15 +10,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.sound.sampled.*;
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.kdzumba.utils.MathUtils;
 import org.kdzumba.interfaces.*;
 
 public class AudioProcessor implements Publisher{
@@ -33,6 +30,8 @@ public class AudioProcessor implements Publisher{
     private PipedOutputStream outputStream;
     private TargetDataLine line;
     private final List<Subscriber> subscribers;
+    public Set<FingerprintHash> toMatch;
+    public boolean shouldPerformMatch = false;
     //endregion
 
     //region static fields
@@ -105,6 +104,21 @@ public class AudioProcessor implements Publisher{
         try {
             if(outputStream != null) outputStream.close();
             if(inputStream != null) inputStream.close();
+
+            if(shouldPerformMatch) {
+                Set<FingerprintHash> storedFingerprints = loadFingerprints("fingerprints.ser");
+                System.out.println("Number of hashes stored: " + storedFingerprints.size());
+                System.out.println("Number of hashes matched: " + storedFingerprints.size());
+                int matchScore = matchFingerprints(storedFingerprints, toMatch);
+
+                if (matchScore > 75) {
+                    System.out.println("MatchScore: " + matchScore);
+                    System.out.println("Match found!");
+                } else {
+                    System.out.println("MatchScore: " + matchScore);
+                    System.out.println("No match.");
+                }
+            }
         } catch(IOException exception) {
             System.out.println("An IOException occurred when closing streams");
         }
@@ -194,7 +208,7 @@ public class AudioProcessor implements Publisher{
             // Compute Magnitude
             for(int j = 0; j < windowSize / 2; j++) {
                 // Square of the magnitude here to get the power of the frequency j at time i
-                spectrogram[i][j] = Math.pow(result[j].abs(), 2);
+                spectrogram[i][j] = Math.log10(Math.pow(result[j].abs(), 2));
             }
         }
         return spectrogram;
@@ -247,20 +261,19 @@ public class AudioProcessor implements Publisher{
         samples.clear();
     }
 
-    public Set<Peak> detectPeaks(double[][] spectrogram, double threshold) {
+    public Set<Peak> extractPeaks(double[][] spectrogram, double threshold) {
         Set<Peak> peaks = new HashSet<>();
 
-        for (int i = 1; i < spectrogram.length - 1; i++) {
-            for (int j = 1; j < spectrogram[i].length - 1; j++) {
-                double current = spectrogram[i][j];
+        for (int time = 1; time < spectrogram.length - 1; time++) {
+            for (int frequency = 1; frequency < spectrogram[time].length - 1; frequency++) {
+                double magnitude = spectrogram[time][frequency];
+                if (magnitude > threshold &&
+                        magnitude > spectrogram[time - 1][frequency] &&
+                        magnitude > spectrogram[time + 1][frequency] &&
+                        magnitude > spectrogram[time][frequency - 1] &&
+                        magnitude > spectrogram[time][frequency + 1]) {
 
-                if (current > threshold &&
-                        current > spectrogram[i - 1][j] &&
-                        current > spectrogram[i + 1][j] &&
-                        current > spectrogram[i][j - 1] &&
-                        current > spectrogram[i][j + 1]) {
-
-                    peaks.add(new Peak(i, j, current));
+                    peaks.add(new Peak(time, frequency, magnitude));
                 }
             }
         }
@@ -284,13 +297,36 @@ public class AudioProcessor implements Publisher{
     }
 
     public Set<FingerprintHash> generateAudioFingerprint(double[][] spectrogram, double peakThreshold, int fanOut) {
-        Set<Peak> peaks = detectPeaks(spectrogram, peakThreshold);
+        Set<Peak> peaks = extractPeaks(spectrogram, peakThreshold);
         return generateHashes(peaks, fanOut);
     }
 
     public Set<FingerprintHash> processAndFingerprint(int windowSize, int overlap, double peakThreshold, int fanOut) {
         double[][] spectrogram = generateSpectrogram(windowSize, overlap);
         return generateAudioFingerprint(spectrogram, peakThreshold, fanOut);
+    }
+
+    public void saveFingerprints(Set<FingerprintHash> fingerprints, String filename) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
+            oos.writeObject(fingerprints);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public Set<FingerprintHash> loadFingerprints(String filename) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
+            return (Set<FingerprintHash>) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public int matchFingerprints(Set<FingerprintHash> storedFingerprints, Set<FingerprintHash> newFingerprints) {
+        Set<FingerprintHash> intersection = new HashSet<>(storedFingerprints);
+        intersection.retainAll(newFingerprints);
+        return intersection.size();
     }
 
     @Override 

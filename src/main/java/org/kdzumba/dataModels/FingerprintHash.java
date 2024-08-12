@@ -1,8 +1,12 @@
 package org.kdzumba.dataModels;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Objects;
 
-public class FingerprintHash {
+public class FingerprintHash implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     public int frequency1;
     public int frequency2;
     public int timeDifference;

@@ -1,6 +1,7 @@
 package org.kdzumba.gui.panels;
 
 import org.kdzumba.AudioProcessor;
+import org.kdzumba.dataModels.FingerprintHash;
 import org.kdzumba.gui.components.ColorBarComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
@@ -11,12 +12,15 @@ import javax.swing.border.BevelBorder;
 
 import java.awt.*;
 import java.io.IOException;
+import java.util.Set;
 
 public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private final TimeAmplitudeGraphComponent audioVisualizer;
     private final SpectrogramComponent spectrogram;
     private final AudioProcessor audioProcessor = new AudioProcessor();
     private final ColorBarComponent colorBar;
+    private boolean shouldPerformMatch = false;
+    private double[][] cumulativeSpectrogramData = null;
 
     public AudioVisualizerPanel() {
         var controlsPanel = getContentPanel();
@@ -57,18 +61,20 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         buttonLabelGroup.add(gridLabel);
         buttonLabelGroup.add(showGrid);
 
-        JButton captureAudioButton = getCaptureButton();
+        JButton fingerprintButton = fingerprintButton();
+        JButton matchButton = matchButton();
         JButton stopCaptureButton = getStopCaptureButton();
         var controlsPanel = new JPanel();
         controlsPanel.add(buttonLabelGroup);
-        controlsPanel.add(captureAudioButton);
+        controlsPanel.add(fingerprintButton);
+        controlsPanel.add(matchButton);
         controlsPanel.add(stopCaptureButton);
         return controlsPanel;
     }
 
-    private JButton getCaptureButton() {
-        JButton captureAudioButton = new JButton("Capture Audio");
-        captureAudioButton.addActionListener((e) -> {
+    private JButton fingerprintButton() {
+        JButton fingerprintButton = new JButton("Fingerprint");
+        fingerprintButton.addActionListener((e) -> {
             try {
                 audioProcessor.startCapture();
                     Timer timer = new Timer(50, (event) -> {
@@ -79,7 +85,24 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
                 throw new RuntimeException(ex);
             }
         });
-        return captureAudioButton;
+        return fingerprintButton;
+    }
+
+    private JButton matchButton() {
+        JButton matchButton = new JButton("Match");
+        matchButton.addActionListener((e) -> {
+            shouldPerformMatch = true;
+            try {
+                audioProcessor.startCapture();
+                Timer timer = new Timer(50, (event) -> {
+                    audioVisualizer.repaint();
+                });
+                timer.start();
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+        return matchButton;
     }
 
     private JButton getStopCaptureButton() {
@@ -99,7 +122,35 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
 
     private void onGenerateSpectrogram() {
-        double[][] spectrogramData = audioProcessor.generateSpectrogram(1024, 992);
-        spectrogram.setSpectrogramData(spectrogramData);
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 992);
+
+        if (cumulativeSpectrogramData == null) {
+            cumulativeSpectrogramData = newSpectrogramData;
+        } else {
+            // Append the new spectrogram data to the existing cumulative data
+            int existingLength = cumulativeSpectrogramData.length;
+            int newLength = newSpectrogramData.length;
+            int totalLength = existingLength + newLength;
+
+            double[][] updatedSpectrogramData = new double[totalLength][];
+
+            System.arraycopy(cumulativeSpectrogramData, 0, updatedSpectrogramData, 0, existingLength);
+            System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
+            cumulativeSpectrogramData = updatedSpectrogramData;
+        }
+
+        spectrogram.setSpectrogramData(newSpectrogramData);
+
+        double peakThreshold = 10.0;
+        int fanOut = 5;
+        Set<FingerprintHash> fingerprints = audioProcessor.generateAudioFingerprint(cumulativeSpectrogramData, peakThreshold, fanOut);
+
+        if (!shouldPerformMatch) {
+            audioProcessor.shouldPerformMatch = false;
+            audioProcessor.saveFingerprints(fingerprints, "fingerprints.ser");
+        } else {
+            audioProcessor.toMatch = fingerprints;
+            audioProcessor.shouldPerformMatch = true;
+        }
     }
 }
