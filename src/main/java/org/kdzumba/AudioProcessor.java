@@ -4,6 +4,8 @@ import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.transform.DftNormalization;
 import org.apache.commons.math3.transform.FastFourierTransformer;
 import org.apache.commons.math3.transform.TransformType;
+import org.kdzumba.dataModels.FingerprintHash;
+import org.kdzumba.dataModels.Peak;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,11 +15,8 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Iterator;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.List;
-import java.util.ArrayList;
 
 import org.kdzumba.utils.MathUtils;
 import org.kdzumba.interfaces.*;
@@ -37,7 +36,7 @@ public class AudioProcessor implements Publisher{
     //endregion
 
     //region static fields
-    private static final int BUFFER_SIZE = 16384; // Max number of samples to store
+    private static final int BUFFER_SIZE = 8192; // Max number of samples to store
     private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
     //endregion
@@ -47,7 +46,7 @@ public class AudioProcessor implements Publisher{
         // The audio format tells the application how to interpret and handle the bits of information
         // in the incoming sound stream.
 
-        float SAMPLE_RATE = 16384;     // Rate at which an audio file is sampled (Hz)
+        float SAMPLE_RATE = 8192;     // Rate at which an audio file is sampled (Hz)
         int SAMPLE_SIZE_IN_BITS = 16;   // Number of bits used to represent each sample of the audio. Determines
                                         // the bit depth for the audio signal
         int CHANNELS = 1;               // Stereo sound = 2 samples per frame (2 * 16 bits = 32 bits per frame)
@@ -246,6 +245,52 @@ public class AudioProcessor implements Publisher{
         notifySubscribers();
         this.generatingSpectrogram = false;
         samples.clear();
+    }
+
+    public Set<Peak> detectPeaks(double[][] spectrogram, double threshold) {
+        Set<Peak> peaks = new HashSet<>();
+
+        for (int i = 1; i < spectrogram.length - 1; i++) {
+            for (int j = 1; j < spectrogram[i].length - 1; j++) {
+                double current = spectrogram[i][j];
+
+                if (current > threshold &&
+                        current > spectrogram[i - 1][j] &&
+                        current > spectrogram[i + 1][j] &&
+                        current > spectrogram[i][j - 1] &&
+                        current > spectrogram[i][j + 1]) {
+
+                    peaks.add(new Peak(i, j, current));
+                }
+            }
+        }
+        return peaks;
+    }
+
+    public Set<FingerprintHash> generateHashes(Set<Peak> peaks, int fanOut) {
+        Set<FingerprintHash> hashes = new HashSet<>();
+        List<Peak> peakList = new ArrayList<>(peaks);
+
+        for (int i = 0; i < peakList.size(); i++) {
+            Peak anchor = peakList.get(i);
+
+            for (int j = 1; j <= fanOut && i + j < peakList.size(); j++) {
+                Peak point = peakList.get(i + j);
+                FingerprintHash hash = new FingerprintHash(anchor, point);
+                hashes.add(hash);
+            }
+        }
+        return hashes;
+    }
+
+    public Set<FingerprintHash> generateAudioFingerprint(double[][] spectrogram, double peakThreshold, int fanOut) {
+        Set<Peak> peaks = detectPeaks(spectrogram, peakThreshold);
+        return generateHashes(peaks, fanOut);
+    }
+
+    public Set<FingerprintHash> processAndFingerprint(int windowSize, int overlap, double peakThreshold, int fanOut) {
+        double[][] spectrogram = generateSpectrogram(windowSize, overlap);
+        return generateAudioFingerprint(spectrogram, peakThreshold, fanOut);
     }
 
     @Override 
