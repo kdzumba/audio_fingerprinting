@@ -71,6 +71,10 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         captureAudioButton.addActionListener((e) -> {
             try {
                 audioProcessor.startCapture();
+                    Timer timer = new Timer(50, (event) -> {
+                        audioVisualizer.repaint();
+                    });
+                    timer.start();
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }

@@ -20,7 +20,6 @@ public class SpectrogramComponent extends JComponent {
     private boolean isAnimating = false;
     private final AudioFormat audioFormat;
     private int currentTimeCol = 0;
-    private Timer animationTimer;
     private boolean animationStarted = false;
 
     public SpectrogramComponent(AudioFormat format) {
@@ -53,12 +52,6 @@ public class SpectrogramComponent extends JComponent {
             for(int j = 0; j < numberOfBins; j++) {
                 float intensity = (float) Math.log1p(spectrogramData[i + 1][j]);
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
-                if(normalizedIntensity < 0) {
-                    System.out.printf("From Range: [%s, %s]%n", fromRange.min, fromRange.max);
-                    System.out.println(String.format("spectrogramData[%s][%s]: ", i, j) + spectrogramData[i][j]);
-                    System.out.println("Intensity: " + intensity);
-                    System.out.println("Normalised intensity: " + normalizedIntensity);
-                }
 
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
                 g.setColor(color);
@@ -72,22 +65,23 @@ public class SpectrogramComponent extends JComponent {
             int numberOfWindows = spectrogramData.length;
             int duration = 1000; // We want to display 1 second worth of spectrogram data
             int delay = duration / numberOfWindows;
-            this.animationTimer = new Timer(delay, e -> {
-                if(this.currentTimeCol < this.spectrogramData.length) {
+            Timer animationTimer = new Timer(delay, e -> {
+                if (this.currentTimeCol < this.spectrogramData.length) {
                     isAnimating = true;
                     this.drawSpectrogram(this.currentTimeCol);
                     this.currentTimeCol++;
                 } else {
                     this.currentTimeCol = 0;
                     isAnimating = false;
-                    repaint();
-                    if(spectrogramDataBackBuffer != null) {
+
+                    if (spectrogramDataBackBuffer != null) {
                         this.spectrogramData = spectrogramDataBackBuffer;
                         this.spectrogramDataBackBuffer = null;
                     }
+                    repaint();
                 }
             });
-            this.animationTimer.start();
+            animationTimer.start();
         } else {
             this.animationStarted = false;
         }
@@ -119,11 +113,16 @@ public class SpectrogramComponent extends JComponent {
 
     private void drawTimeTicks(Graphics g) {
         g.setColor(Color.BLACK);
-        double windowDuration = (double) 1024 / audioFormat.getSampleRate(); // Example window size
-        for (int j = 0; j < 85; j += 85 / 10) {
-            int x = (int) (j * WIDTH / 85) + 80;
-            g.drawLine(x, HEIGHT + 20, x, HEIGHT + 30);
-            g.drawString(String.format("%.2f", j * windowDuration), x, HEIGHT + 40);
+
+        // We want the entire width to represent 1 second
+        double tickInterval = 0.1; // Interval for each tick (e.g., 0.1 seconds for better granularity)
+        int numberOfTicks = (int) Math.ceil(1.0 / tickInterval);
+
+        // Position ticks at intervals of tickInterval seconds
+        for (int i = 0; i <= numberOfTicks; i++) {
+            int x = (int) (i * tickInterval * WIDTH);
+            g.drawLine(x + 80, HEIGHT + 20, x + 80, HEIGHT + 30);
+            g.drawString(String.format("%.1f", i * tickInterval), x + 80, HEIGHT + 40);
         }
     }
 
@@ -134,14 +133,14 @@ public class SpectrogramComponent extends JComponent {
         FontMetrics fm = g2d.getFontMetrics();
         String label = "Frequency (Hz)";
         int x = (WIDTH - fm.stringWidth(label)) / 2;
-        int yPos = -130; //(getHeight() + fm.getAscent()) / 2;
+        int yPos = -130;
         g2d.drawString("Frequency (kHz)", x, yPos);
         g2d.setTransform(original);
 
         g.setColor(Color.BLACK);
         double binFrequency = (double) audioFormat.getSampleRate() / 1024;
         for (int i = 0; i < 512; i += 512 / 10) {
-            int y = (int) (i + 20);
+            int y = i + 20;
             g.drawLine(65, y, 80, y);
             g.drawString(String.format("%.2f", (i * binFrequency) / 1000), 25, y);
         }
@@ -154,7 +153,6 @@ public class SpectrogramComponent extends JComponent {
         g2d.setColor(VISUALIZER_BACKGROUND_COLOR);
         g2d.fillRect(80, 20, WIDTH, HEIGHT);
 
-//        UIUtils.showGrid(g, 80, 40, WIDTH, HEIGHT - 5);
         drawTimeTicks(g);
         drawFrequencyTicks(g);
 
