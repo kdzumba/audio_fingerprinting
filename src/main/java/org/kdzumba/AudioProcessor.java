@@ -14,14 +14,12 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.kdzumba.interfaces.*;
 
 public class AudioProcessor implements Publisher{
-    //region private fields
     private final AudioFormat audioFormat;
-    public final ConcurrentLinkedQueue<Short> samples;
+    public final List<Short> samples;
     private final short[] samplesArray;
     public boolean capturing;
     public boolean generatingSpectrogram;
@@ -32,23 +30,16 @@ public class AudioProcessor implements Publisher{
     private final List<Subscriber> subscribers;
     public Set<FingerprintHash> toMatch;
     public boolean shouldPerformMatch = false;
-    //endregion
 
-    //region static fields
-    private static final int BUFFER_SIZE = 8192; // Max number of samples to store
-    private static final int PIPED_STREAM_BUFFER_SIZE = 4096;
+    private static final int BUFFER_SIZE = 8192; // Max number of samples to store for spectrogram generation
+    private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
     private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
-    //endregion
 
-    //region ctor
     public AudioProcessor() {
-        // The audio format tells the application how to interpret and handle the bits of information
-        // in the incoming sound stream.
+        float SAMPLE_RATE = 8192;
+        int SAMPLE_SIZE_IN_BITS = 16;
 
-        float SAMPLE_RATE = 8192;     // Rate at which an audio file is sampled (Hz)
-        int SAMPLE_SIZE_IN_BITS = 16;   // Number of bits used to represent each sample of the audio. Determines
-                                        // the bit depth for the audio signal
-        int CHANNELS = 1;               // Stereo sound = 2 samples per frame (2 * 16 bits = 32 bits per frame)
+        int CHANNELS = 1;
         boolean SIGNED = true;
         boolean BIG_ENDIAN = true;
 
@@ -58,14 +49,12 @@ public class AudioProcessor implements Publisher{
                 SIGNED,
                 BIG_ENDIAN);
 
-        samples = new ConcurrentLinkedQueue<>();
+        samples = new LinkedList<>();
         samplesArray = new short[PIPED_STREAM_BUFFER_SIZE/(SAMPLE_SIZE_IN_BITS / 8)];
         capturing = false;
         subscribers = new ArrayList<>();
     }
-    //endregion
 
-    //region public methods
     public AudioFormat getAudioFormat() {
         return audioFormat;
     }
@@ -124,19 +113,18 @@ public class AudioProcessor implements Publisher{
         }
     }
 
-    public ConcurrentLinkedQueue<Short> getSamples() { return samples; }
     public short[] getSamplesArray() { return samplesArray; }
 
     public void captureAudioDataFromMicrophone(PipedOutputStream outputStream) throws IOException {
         line = getTargetDataLine();
-        byte[] writeBuffer = new byte[PIPED_STREAM_BUFFER_SIZE];
+        byte[] microphoneDataBuffer = new byte[PIPED_STREAM_BUFFER_SIZE];
 
         // Start Capturing Audio
         Objects.requireNonNull(line).start();
-        try (outputStream) {
+        try (outputStream; outputStream) {
             while (capturing) {
-                numberOfBytesRead = line.read(writeBuffer, 0, writeBuffer.length);
-                outputStream.write(writeBuffer, 0, numberOfBytesRead);
+                numberOfBytesRead = line.read(microphoneDataBuffer, 0, microphoneDataBuffer.length);
+                outputStream.write(microphoneDataBuffer, 0, numberOfBytesRead);
             }
             line.flush();
         } finally {
@@ -146,19 +134,23 @@ public class AudioProcessor implements Publisher{
     }
 
     public void processCapturedSamples(PipedInputStream inputStream) throws IOException {
-        byte[] readBuffer = new byte[PIPED_STREAM_BUFFER_SIZE];
+        byte[] pipedOutputStreamBuffer = new byte[PIPED_STREAM_BUFFER_SIZE];
 
         while (capturing) {
             int totalBytesRead = 0;
             while (totalBytesRead < numberOfBytesRead) {
-                int bytesRead = inputStream.read(readBuffer, totalBytesRead, numberOfBytesRead - totalBytesRead);
+                int bytesRead = inputStream.read(pipedOutputStreamBuffer, totalBytesRead, numberOfBytesRead - totalBytesRead);
                 if (bytesRead == -1) {
                     break;
                 }
                 totalBytesRead += bytesRead;
             }
 
-            ByteBuffer.wrap(readBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
+            //This conversion from bytes to shorts means we have half the number of samples as 
+            //the bytes that were read (1 short = 2 bytes), so the samples array always contains 
+            //half the read bytes size
+            System.out.println("Setting of the samples array happening in: " + Thread.currentThread().getName());
+            ByteBuffer.wrap(pipedOutputStreamBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
             if (totalBytesRead > 0) {
                 if (samples.size() >= BUFFER_SIZE) { // when we get BUFFER_SIZE samples, we have 1 second worth of audio data
@@ -175,6 +167,7 @@ public class AudioProcessor implements Publisher{
     }
 
     public double[][] generateSpectrogram(int windowSize, int overlap) {
+        System.out.println("The generation of the spectrogram is happening in: " + Thread.currentThread().getName());
         int stepSize = windowSize - overlap;
 
         int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
@@ -229,9 +222,7 @@ public class AudioProcessor implements Publisher{
         }
         return magnitudes;
     }
-    //endregion
 
-    //region private methods
     private TargetDataLine getTargetDataLine() {
         if(line != null) {
             line.stop();
@@ -343,5 +334,4 @@ public class AudioProcessor implements Publisher{
     public void notifySubscribers() {
         subscribers.forEach(Subscriber::update);
     }
-    //endregion
 }

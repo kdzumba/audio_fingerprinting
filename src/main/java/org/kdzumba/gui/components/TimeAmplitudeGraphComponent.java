@@ -12,23 +12,23 @@ import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class TimeAmplitudeGraphComponent extends JComponent {
     private boolean showGrid = true;
-    private final short[] samplesArray; // Array of amplitudes that we want to plot
+    private final short[] samples; // Array of amplitudes that we want to plot
 
-    public TimeAmplitudeGraphComponent(short[] samplesArray) {
-        this.samplesArray = samplesArray;
+    public TimeAmplitudeGraphComponent(short[] samples) {
+        this.samples = samples;
     }
 
     private void drawSoundWave(Graphics g) {
-        if(samplesArray.length == 0) { return ; }
+        if(samples.length == 0) { return ; }
 
         int width = getWidth();
         int height = getHeight();
         int midHeight = (height / 2);
-        int displayWidth = Math.min(samplesArray.length, width);
-        double xIncrement = (double) samplesArray.length / displayWidth;
+        int displayWidth = Math.min(samples.length, width);
+        double xIncrement = (double) samples.length / displayWidth;
 
         double x = 0;
-        for(Short sample : samplesArray) {
+        for(Short sample : samples) {
             MathUtils.Range sampleRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
             MathUtils.Range displayRange = new MathUtils.Range(midHeight * -1, midHeight);
             double normalizedY = MathUtils.convertToRange(sample, sampleRange, displayRange);
