@@ -16,8 +16,6 @@ public class SpectrogramComponent extends JComponent {
     private final int WIDTH = 850;
     private final int HEIGHT = 512;
     private double[][] spectrogramData;
-    private double[][] spectrogramDataBackBuffer;
-    private boolean isAnimating = false;
     private final AudioFormat audioFormat;
     private int currentTimeCol = 0;
     private boolean animationStarted = false;
@@ -27,12 +25,8 @@ public class SpectrogramComponent extends JComponent {
     }
 
     public void setSpectrogramData(double[][] spectrogramData) {
-        if(isAnimating) {
-            this.spectrogramDataBackBuffer = spectrogramData;
-        } else {
-            this.spectrogramData = spectrogramData;
-            repaint();
-        }
+        this.spectrogramData = spectrogramData;
+        repaint();
     }
 
     private void drawSpectrogram(int upToColumn) {
@@ -66,20 +60,8 @@ public class SpectrogramComponent extends JComponent {
             int duration = 1000; // We want to display 1 second worth of spectrogram data
             int delay = duration / numberOfWindows;
             Timer animationTimer = new Timer(delay, e -> {
-                if (this.currentTimeCol < this.spectrogramData.length) {
-                    isAnimating = true;
-                    this.drawSpectrogram(this.currentTimeCol);
-                    this.currentTimeCol++;
-                } else {
-                    this.currentTimeCol = 0;
-                    isAnimating = false;
-
-                    if (spectrogramDataBackBuffer != null) {
-                        this.spectrogramData = spectrogramDataBackBuffer;
-                        this.spectrogramDataBackBuffer = null;
-                    }
-                    repaint();
-                }
+                this.drawSpectrogram(this.currentTimeCol);
+                this.currentTimeCol++;
             });
             animationTimer.start();
         } else {
