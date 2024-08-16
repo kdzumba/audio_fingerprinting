@@ -123,40 +123,23 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
 
     private void onGenerateSpectrogram() {
-        SwingWorker<Void, double[][]> spectrogramUpdater = new SwingWorker<>() {
-            @Override
-            protected Void doInBackground() {
-                System.out.println("On generate spectrogram processing happening in: " + Thread.currentThread().getName());
-                double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 992);
 
-                if (cumulativeSpectrogramData == null) {
-                    cumulativeSpectrogramData = newSpectrogramData;
-                } else {
-                    // Append the new spectrogram data to the existing cumulative data
-                    int existingLength = cumulativeSpectrogramData.length;
-                    int newLength = newSpectrogramData.length;
-                    int totalLength = existingLength + newLength;
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 992);
+        if(cumulativeSpectrogramData == null) {
+            cumulativeSpectrogramData = newSpectrogramData;
+        } else {
+            // Append the new spectrogram data to the existing cumulative data
+            int existingLength = cumulativeSpectrogramData.length;
+            int newLength = newSpectrogramData.length;
+            int totalLength = existingLength + newLength;
 
-                    double[][] updatedSpectrogramData = new double[totalLength][];
+            double[][] updatedSpectrogramData = new double[totalLength][];
+            System.arraycopy(cumulativeSpectrogramData, 0, updatedSpectrogramData, 0, existingLength);
+            System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
+            cumulativeSpectrogramData = updatedSpectrogramData;
+        }
 
-                    System.arraycopy(cumulativeSpectrogramData, 0, updatedSpectrogramData, 0, existingLength);
-                    System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
-                    cumulativeSpectrogramData = updatedSpectrogramData;
-                }
-                publish(newSpectrogramData);
-                return null;
-            }
-
-            @Override
-            protected void process(List<double[][]> chunks) {
-                if (!chunks.isEmpty()) {
-                    double[][] latestSpectrogramData = chunks.get(chunks.size() - 1);
-                    spectrogram.setSpectrogramData(latestSpectrogramData);
-                    System.out.println("Length of the spectrogram: " + latestSpectrogramData.length);
-                }
-            }
-        };
-        spectrogramUpdater.execute();
+        spectrogram.setSpectrogramData(newSpectrogramData);
 
         double peakThreshold = 10.0;
         int fanOut = 10;

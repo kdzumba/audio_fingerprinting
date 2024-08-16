@@ -28,6 +28,7 @@ public class TimeAmplitudeGraphComponent extends JComponent {
         double xIncrement = (double) samples.length / displayWidth;
 
         double x = 0;
+
         for(Short sample : samples) {
             MathUtils.Range sampleRange = new MathUtils.Range(Short.MIN_VALUE, Short.MAX_VALUE);
             MathUtils.Range displayRange = new MathUtils.Range(midHeight * -1, midHeight);

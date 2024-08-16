@@ -6,8 +6,6 @@ import org.apache.commons.math3.transform.FastFourierTransformer;
 import org.apache.commons.math3.transform.TransformType;
 import org.kdzumba.dataModels.FingerprintHash;
 import org.kdzumba.dataModels.Peak;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.sound.sampled.*;
 import java.io.*;
@@ -31,9 +29,8 @@ public class AudioProcessor implements Publisher{
     public Set<FingerprintHash> toMatch;
     public boolean shouldPerformMatch = false;
 
-    private static final int BUFFER_SIZE = 8192; // Max number of samples to store for spectrogram generation
+    private static final int BUFFER_SIZE = 1024; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
-    private static final Logger LOGGER = LoggerFactory.getLogger(AudioProcessor.class);
 
     public AudioProcessor() {
         float SAMPLE_RATE = 8192;
@@ -69,6 +66,7 @@ public class AudioProcessor implements Publisher{
                 captureAudioDataFromMicrophone(outputStream);
             } catch(IOException exception){
                 System.out.println("An IOException occurred when capturing audio samples");
+                exception.printStackTrace();
             }
         }, "Capture Thread");
 
@@ -121,7 +119,7 @@ public class AudioProcessor implements Publisher{
 
         // Start Capturing Audio
         Objects.requireNonNull(line).start();
-        try (outputStream; outputStream) {
+        try (outputStream;) {
             while (capturing) {
                 numberOfBytesRead = line.read(microphoneDataBuffer, 0, microphoneDataBuffer.length);
                 outputStream.write(microphoneDataBuffer, 0, numberOfBytesRead);
@@ -149,7 +147,6 @@ public class AudioProcessor implements Publisher{
             //This conversion from bytes to shorts means we have half the number of samples as 
             //the bytes that were read (1 short = 2 bytes), so the samples array always contains 
             //half the read bytes size
-            System.out.println("Setting of the samples array happening in: " + Thread.currentThread().getName());
             ByteBuffer.wrap(pipedOutputStreamBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
             if (totalBytesRead > 0) {
@@ -167,7 +164,6 @@ public class AudioProcessor implements Publisher{
     }
 
     public double[][] generateSpectrogram(int windowSize, int overlap) {
-        System.out.println("The generation of the spectrogram is happening in: " + Thread.currentThread().getName());
         int stepSize = windowSize - overlap;
 
         int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
@@ -232,7 +228,7 @@ public class AudioProcessor implements Publisher{
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, this.audioFormat);
 
         if (!AudioSystem.isLineSupported(info)) {
-            LOGGER.debug("Failed to access the DataLine with given type and format as it's not supported in this system");
+            System.out.println("Specified DataLine type not supported");
             return null;
         }
 
@@ -240,7 +236,7 @@ public class AudioProcessor implements Publisher{
             line = (TargetDataLine) AudioSystem.getLine(info);
             line.open(this.audioFormat);
         } catch(LineUnavailableException exception) {
-            LOGGER.debug("There was no DataLine available for the application to acquire");
+            System.out.println("LineUnavailableException");
         }
         return line;
     }
