@@ -1,7 +1,6 @@
 package org.kdzumba.gui.panels;
 
 import org.kdzumba.AudioProcessor;
-import org.kdzumba.dataModels.FingerprintHash;
 import org.kdzumba.gui.components.ColorBarComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
@@ -12,7 +11,6 @@ import javax.swing.border.BevelBorder;
 
 import java.awt.*;
 import java.io.IOException;
-import java.util.Set;
 import java.util.List;
 
 public class AudioVisualizerPanel extends JPanel implements Subscriber {
@@ -21,7 +19,6 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private final AudioProcessor audioProcessor = new AudioProcessor();
     private final ColorBarComponent colorBar;
     private boolean shouldPerformMatch = false;
-    private double[][] cumulativeSpectrogramData = null;
 
     public AudioVisualizerPanel() {
         var controlsPanel = getContentPanel();
@@ -123,7 +120,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
 
     private void onGenerateSpectrogram(List<Short> samples) {
-        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 512, samples);
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 256, samples);
         spectrogram.setSpectrogramData(newSpectrogramData);
     }
 }

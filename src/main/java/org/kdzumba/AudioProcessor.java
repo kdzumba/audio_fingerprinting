@@ -27,7 +27,7 @@ public class AudioProcessor implements Publisher{
     private final List<Subscriber> subscribers;
     public Set<FingerprintHash> toMatch;
     public boolean shouldPerformMatch = false;
-    private double[][] cummulativeSpectrogram;
+    private double[][] cumulativeSpectrogram;
 
     private static final int BUFFER_SIZE = 1024; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
@@ -201,7 +201,7 @@ public class AudioProcessor implements Publisher{
             }
         }
 
-        this.updateCummulativeSpectrogram(spectrogram);
+        this.updatecumulativeSpectrogram(spectrogram);
         return spectrogram;
     }
 
@@ -312,26 +312,26 @@ public class AudioProcessor implements Publisher{
         return intersection.size();
     }
 
-    private void updateCummulativeSpectrogram(double[][] newSpectrogramData) {
-        if(cummulativeSpectrogram == null) {
-            cummulativeSpectrogram = newSpectrogramData;
+    private void updatecumulativeSpectrogram(double[][] newSpectrogramData) {
+        if(cumulativeSpectrogram == null) {
+            cumulativeSpectrogram = newSpectrogramData;
         } else {
             // Append the new spectrogram data to the existing cumulative data
-            int existingLength = cummulativeSpectrogram.length;
+            int existingLength = cumulativeSpectrogram.length;
             int newLength = newSpectrogramData.length;
             int totalLength = existingLength + newLength;
 
             double[][] updatedSpectrogramData = new double[totalLength][];
-            System.arraycopy(cummulativeSpectrogram, 0, updatedSpectrogramData, 0, existingLength);
+            System.arraycopy(cumulativeSpectrogram, 0, updatedSpectrogramData, 0, existingLength);
             System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
-            cummulativeSpectrogram = updatedSpectrogramData;
+            cumulativeSpectrogram = updatedSpectrogramData;
         }
     }
 
     public void generateFingerprints() {
         double peakThreshold = 10.0;
         int fanOut = 10;
-        Set<FingerprintHash> fingerprints = this.generateAudioFingerprint(cummulativeSpectrogram, peakThreshold, fanOut);
+        Set<FingerprintHash> fingerprints = this.generateAudioFingerprint(cumulativeSpectrogram, peakThreshold, fanOut);
 
         if (!shouldPerformMatch) {
             this.shouldPerformMatch = false;
