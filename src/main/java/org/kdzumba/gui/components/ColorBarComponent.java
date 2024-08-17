@@ -27,7 +27,7 @@ public class ColorBarComponent extends JComponent {
 
         // Draw gradient bar
         for (int y = 0; y < height; y++) {
-            float ratio = (float) y / (float) height;
+            float ratio = 1.0f - (float) y / (float) height;
             Color color = UIUtils.getColorForRatio(colors, ratio);
             g2d.setColor(color);
             g2d.drawLine(0, y, width - 30, y); // Leave space for labels and ticks

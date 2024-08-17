@@ -44,7 +44,7 @@ public class SpectrogramComponent extends JComponent {
 
         int numberOfWindows = spectrogramData.length; // Each window represent time
         int numberOfBins = spectrogramData[0].length; // Each bin represent frequency
-                                                      //
+
         System.out.println("NumberofWindows: " + numberOfWindows);
         System.out.println("NumberOfBins: " + numberOfBins);
 

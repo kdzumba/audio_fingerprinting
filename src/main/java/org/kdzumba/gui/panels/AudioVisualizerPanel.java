@@ -120,7 +120,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
 
     private void onGenerateSpectrogram(List<Short> samples) {
-        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 256, samples);
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(2048, 1024, samples);
         spectrogram.setSpectrogramData(newSpectrogramData);
     }
 }
