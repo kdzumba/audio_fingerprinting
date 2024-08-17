@@ -20,7 +20,6 @@ public class AudioProcessor implements Publisher{
     public final List<Short> samples;
     private final short[] samplesArray;
     public boolean capturing;
-    public boolean generatingSpectrogram;
     private int numberOfBytesRead;
     private PipedInputStream inputStream;
     private PipedOutputStream outputStream;
@@ -75,6 +74,7 @@ public class AudioProcessor implements Publisher{
                 processCapturedSamples(inputStream);
             } catch(Exception exception) {
                 System.out.println("An IOException occurred when processing captured samples");
+                exception.printStackTrace();
             }
         }, "Process Thread");
 
@@ -151,23 +151,21 @@ public class AudioProcessor implements Publisher{
 
             if (totalBytesRead > 0) {
                 if (samples.size() >= BUFFER_SIZE) { // when we get BUFFER_SIZE samples, we have 1 second worth of audio data
-                    this.setGenerateSpectrogram();
+                    this.notifySamplesChanged(new ArrayList<>(samples));
+                    samples.clear();
                 }
-
-                if(!this.generatingSpectrogram) {
-                    for (short sample : samplesArray) {
-                        samples.add(sample);
-                    }
-                }
-            }
-       }
+                for (short sample : samplesArray) {
+                  samples.add(sample);
+                }   
+            }   
+        }   
     }
 
     public double[][] generateSpectrogram(int windowSize, int overlap) {
-        int stepSize = windowSize - overlap;
+        int hopSize = windowSize - overlap;
 
-        int numberOfWindows = (samples.size() - windowSize) / stepSize + 1;
-        double[][] spectrogram = new double[numberOfWindows][windowSize / 2];
+        int numberOfTimeBlocks = (samples.size() - windowSize) / hopSize + 1;
+        double[][] spectrogram = new double[numberOfTimeBlocks][windowSize / 2];
         double[] window = new double[windowSize];
 
         // Hamming window function
@@ -177,27 +175,69 @@ public class AudioProcessor implements Publisher{
 
         FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
 
-        for(int i = 0; i < numberOfWindows; i++) {
-            double[] segment = new double[windowSize];
+        for(int i = 0; i < numberOfTimeBlocks; i++) {
+            double[] timeBlock = new double[windowSize];
 
             //Get samples for the current window and apply the Hamming window
             Iterator<Short> iterator = samples.iterator();
-            for(int j = 0; j < i * stepSize; j++) iterator.next(); // skip to start of the current window
+            for(int j = 0; j < i * hopSize; j++) iterator.next(); // skip to start of the current window
             for(int j = 0; j < windowSize; j++) {
                 if(iterator.hasNext()) {
-                    segment[j] = iterator.next() * window[j];
+                    timeBlock[j] = iterator.next() * window[j];
                 } else {
-                    segment[j] = 0;
+                    timeBlock[j] = 0;
                 }
             }
 
             // Perform FFT
-            Complex[] result = transformer.transform(segment, TransformType.FORWARD);
+            Complex[] result = transformer.transform(timeBlock, TransformType.FORWARD);
 
             // Compute Magnitude
             for(int j = 0; j < windowSize / 2; j++) {
                 // Square of the magnitude here to get the power of the frequency j at time i
                 spectrogram[i][j] = Math.log10(Math.pow(result[j].abs(), 2));
+            }
+        }
+        samples.clear();
+        return spectrogram;
+    }
+
+    public double[][] generateSpectrogram(int windowSize, int hopSize, List<Short> samples) {
+        int numberOfTimeBlocks = (samples.size() - windowSize) / hopSize + 1;
+        int numberOfFrequencyBins = (windowSize / 2) + 1;
+        double[][] spectrogram = new double[numberOfTimeBlocks][numberOfFrequencyBins];
+        double[] windowFunction = new double[windowSize];
+
+        // Hamming window function
+        for(int i = 0; i < windowSize; i++) {
+            windowFunction[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (windowSize - 1));
+        }
+
+        for(int i = 0; i < numberOfTimeBlocks; i++) {
+            double[] timeBlock = new double[windowSize];
+
+            Iterator<Short> iterator = samples.iterator();
+            // skip to start of the current window
+            for(int j = 0; j < i * hopSize; j++) iterator.next();
+
+            for(int k = 0; k < windowSize; k++) {
+                if(iterator.hasNext()) {
+                    // Applying the window function to each of the samples within the current timeBlock
+                    timeBlock[k] = iterator.next() * windowFunction[k];
+                } else {
+                    // Zero-padding if we run out of samples before reaching window size
+                    timeBlock[k] = 0;
+                }
+            }
+
+            // Perform Short Time Fourier Transform (stft) on the timeBlock
+            FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
+            Complex[] stft = transformer.transform(timeBlock, TransformType.FORWARD);
+
+            
+            for(int j = 0; j < numberOfFrequencyBins; j++) {
+                double magnitude = stft[j].abs();
+                spectrogram[i][j] = 20 * Math.log10(magnitude);
             }
         }
         return spectrogram;
@@ -241,11 +281,10 @@ public class AudioProcessor implements Publisher{
         return line;
     }
 
-    public void setGenerateSpectrogram() {
-        this.generatingSpectrogram = true;
-        notifySubscribers();
-        this.generatingSpectrogram = false;
-        samples.clear();
+    public void notifySamplesChanged(List<Short> samples) {
+        new Thread(() -> {
+          notifySubscribers(samples);
+        }).start();
     }
 
     public Set<Peak> extractPeaks(double[][] spectrogram, double threshold) {
@@ -327,7 +366,7 @@ public class AudioProcessor implements Publisher{
     }
 
     @Override 
-    public void notifySubscribers() {
-        subscribers.forEach(Subscriber::update);
+    public void notifySubscribers(List<Short> samples) {
+        subscribers.forEach(s -> s.update(samples));
     }
 }

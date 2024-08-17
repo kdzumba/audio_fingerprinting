@@ -1,5 +1,7 @@
 package org.kdzumba.interfaces;
 
+import java.util.List;
+
 public interface Subscriber {
-    void update();
+    void update(List<Short> samples);
 }

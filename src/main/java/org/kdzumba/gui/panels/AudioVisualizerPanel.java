@@ -118,16 +118,16 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
     
     @Override 
-    public void update() {
-        this.onGenerateSpectrogram();
+    public void update(List<Short> samples) {
+        this.onGenerateSpectrogram(samples);
     }
 
-    private void onGenerateSpectrogram() {
+    private void onGenerateSpectrogram(List<Short> samples) {
 
         //TODO: This guy is doing too much. Should only be receiving latest spectrogram data
         //and rendering that
 
-        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 992);
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 992, samples);
         if(cumulativeSpectrogramData == null) {
             cumulativeSpectrogramData = newSpectrogramData;
         } else {

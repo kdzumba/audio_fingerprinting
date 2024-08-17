@@ -18,23 +18,36 @@ public class SpectrogramComponent extends JComponent {
     private double[][] spectrogramData;
     private final AudioFormat audioFormat;
     private int currentTimeCol = 0;
-    private boolean animationStarted = false;
 
     public SpectrogramComponent(AudioFormat format) {
         this.audioFormat = format;
     }
 
     public void setSpectrogramData(double[][] spectrogramData) {
-        this.spectrogramData = spectrogramData;
+       
+        if(this.spectrogramData == null) {
+            this.spectrogramData = spectrogramData;
+
+        } else {
+            double[][] newSpectrogram = new double[currentTimeCol + 1][HEIGHT];
+            for(int i = 0; i < this.spectrogramData.length; i++) {
+                System.arraycopy(this.spectrogramData[i], 0, newSpectrogram[i], 0, this.spectrogramData[0].length);
+            }
+            System.arraycopy(spectrogramData[0], 0, newSpectrogram[this.spectrogramData.length - 1], 0, spectrogramData[0].length);
+
+            this.spectrogramData = newSpectrogram;
+        }
+        currentTimeCol++;
         repaint();
     }
 
-    private void drawSpectrogram(int upToColumn) {
+    private void drawSpectrogram(Graphics g) {
         if(spectrogramData == null) return;
 
-        Graphics g = getGraphics();
         int numberOfWindows = spectrogramData.length; // Each window represent time
         int numberOfBins = spectrogramData[0].length; // Each bin represent frequency
+                                                      //
+        System.out.println("NumberofWindows: " + numberOfWindows);
 
         double colWidth = (double) WIDTH / numberOfWindows;
         double rowHeight = (double) HEIGHT / numberOfBins;
@@ -42,9 +55,9 @@ public class SpectrogramComponent extends JComponent {
         Range fromRange = getIntensityRange(numberOfWindows, numberOfBins);
         Range toRange = new Range(0.0, 1.0);
 
-        for(int i = upToColumn - 1; i < upToColumn; i++) {
+        for(int i = 0; i < numberOfWindows; i++) {
             for(int j = 0; j < numberOfBins; j++) {
-                float intensity = (float) Math.log1p(spectrogramData[i + 1][j]);
+                float intensity = (float) Math.log1p(spectrogramData[i][j]);
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
 
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
@@ -54,20 +67,6 @@ public class SpectrogramComponent extends JComponent {
         }
     }
 
-    private void startSpectrogramAnimation() {
-        if(this.spectrogramData != null) {
-            int numberOfWindows = spectrogramData.length;
-            int duration = 1000; // We want to display 1 second worth of spectrogram data
-            int delay = duration / numberOfWindows;
-            Timer animationTimer = new Timer(delay, e -> {
-                this.drawSpectrogram(this.currentTimeCol);
-                this.currentTimeCol++;
-            });
-            animationTimer.start();
-        } else {
-            this.animationStarted = false;
-        }
-    }
 
     private Range getIntensityRange(int numberOfRows, int numberOfCols) {
         double maxIntensity = Double.NEGATIVE_INFINITY;
@@ -138,10 +137,8 @@ public class SpectrogramComponent extends JComponent {
         drawTimeTicks(g);
         drawFrequencyTicks(g);
 
-        if(!animationStarted) {
-            animationStarted = true;
-            startSpectrogramAnimation();
-        }
+        //startSpectrogramAnimation();
+        this.drawSpectrogram(g);
     }
 
     @Override
