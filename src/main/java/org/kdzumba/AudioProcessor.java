@@ -161,50 +161,9 @@ public class AudioProcessor implements Publisher{
         }   
     }
 
-    public double[][] generateSpectrogram(int windowSize, int overlap) {
-        int hopSize = windowSize - overlap;
-
-        int numberOfTimeBlocks = (samples.size() - windowSize) / hopSize + 1;
-        double[][] spectrogram = new double[numberOfTimeBlocks][windowSize / 2];
-        double[] window = new double[windowSize];
-
-        // Hamming window function
-        for(int i = 0; i < windowSize; i++) {
-            window[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (windowSize - 1));
-        }
-
-        FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
-
-        for(int i = 0; i < numberOfTimeBlocks; i++) {
-            double[] timeBlock = new double[windowSize];
-
-            //Get samples for the current window and apply the Hamming window
-            Iterator<Short> iterator = samples.iterator();
-            for(int j = 0; j < i * hopSize; j++) iterator.next(); // skip to start of the current window
-            for(int j = 0; j < windowSize; j++) {
-                if(iterator.hasNext()) {
-                    timeBlock[j] = iterator.next() * window[j];
-                } else {
-                    timeBlock[j] = 0;
-                }
-            }
-
-            // Perform FFT
-            Complex[] result = transformer.transform(timeBlock, TransformType.FORWARD);
-
-            // Compute Magnitude
-            for(int j = 0; j < windowSize / 2; j++) {
-                // Square of the magnitude here to get the power of the frequency j at time i
-                spectrogram[i][j] = Math.log10(Math.pow(result[j].abs(), 2));
-            }
-        }
-        samples.clear();
-        return spectrogram;
-    }
-
     public double[][] generateSpectrogram(int windowSize, int hopSize, List<Short> samples) {
         int numberOfTimeBlocks = (samples.size() - windowSize) / hopSize + 1;
-        int numberOfFrequencyBins = (windowSize / 2) + 1;
+        int numberOfFrequencyBins = (windowSize / 2);
         double[][] spectrogram = new double[numberOfTimeBlocks][numberOfFrequencyBins];
         double[] windowFunction = new double[windowSize];
 

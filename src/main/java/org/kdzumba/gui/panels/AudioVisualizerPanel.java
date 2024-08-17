@@ -127,7 +127,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         //TODO: This guy is doing too much. Should only be receiving latest spectrogram data
         //and rendering that
 
-        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 992, samples);
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 512, samples);
         if(cumulativeSpectrogramData == null) {
             cumulativeSpectrogramData = newSpectrogramData;
         } else {
