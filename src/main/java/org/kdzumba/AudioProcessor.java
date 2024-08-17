@@ -328,6 +328,20 @@ public class AudioProcessor implements Publisher{
         }
     }
 
+    public void generateFingerprints() {
+        double peakThreshold = 10.0;
+        int fanOut = 10;
+        Set<FingerprintHash> fingerprints = this.generateAudioFingerprint(cummulativeSpectrogram, peakThreshold, fanOut);
+
+        if (!shouldPerformMatch) {
+            this.shouldPerformMatch = false;
+            this.saveFingerprints(fingerprints, "fingerprints.ser");
+        } else {
+            this.toMatch = fingerprints;
+            this.shouldPerformMatch = true;
+        }
+    }
+
     @Override 
     public void addSubscriber(Subscriber subscriber) {
         this.subscribers.add(subscriber);

@@ -123,25 +123,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
 
     private void onGenerateSpectrogram(List<Short> samples) {
-
-        //TODO: This guy is doing too much. Should only be receiving latest spectrogram data
-        //and rendering that
-
         double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 512, samples);
-
-        //We are passing the newly generated spectrogram data for visualization
         spectrogram.setSpectrogramData(newSpectrogramData);
-
-        double peakThreshold = 10.0;
-        int fanOut = 10;
-        Set<FingerprintHash> fingerprints = audioProcessor.generateAudioFingerprint(cumulativeSpectrogramData, peakThreshold, fanOut);
-
-        if (!shouldPerformMatch) {
-            audioProcessor.shouldPerformMatch = false;
-            audioProcessor.saveFingerprints(fingerprints, "fingerprints.ser");
-        } else {
-            audioProcessor.toMatch = fingerprints;
-            audioProcessor.shouldPerformMatch = true;
-        }
     }
 }
