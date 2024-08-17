@@ -27,6 +27,7 @@ public class AudioProcessor implements Publisher{
     private final List<Subscriber> subscribers;
     public Set<FingerprintHash> toMatch;
     public boolean shouldPerformMatch = false;
+    private double[][] cummulativeSpectrogram;
 
     private static final int BUFFER_SIZE = 1024; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
@@ -199,6 +200,8 @@ public class AudioProcessor implements Publisher{
                 spectrogram[i][j] = 20 * Math.log10(magnitude);
             }
         }
+
+        this.updateCummulativeSpectrogram(spectrogram);
         return spectrogram;
     }
 
@@ -286,11 +289,6 @@ public class AudioProcessor implements Publisher{
         return generateHashes(peaks, fanOut);
     }
 
-    public Set<FingerprintHash> processAndFingerprint(int windowSize, int overlap, double peakThreshold, int fanOut) {
-        double[][] spectrogram = generateSpectrogram(windowSize, overlap);
-        return generateAudioFingerprint(spectrogram, peakThreshold, fanOut);
-    }
-
     public void saveFingerprints(Set<FingerprintHash> fingerprints, String filename) {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
             oos.writeObject(fingerprints);
@@ -312,6 +310,22 @@ public class AudioProcessor implements Publisher{
         Set<FingerprintHash> intersection = new HashSet<>(storedFingerprints);
         intersection.retainAll(newFingerprints);
         return intersection.size();
+    }
+
+    private void updateCummulativeSpectrogram(double[][] newSpectrogramData) {
+        if(cummulativeSpectrogram == null) {
+            cummulativeSpectrogram = newSpectrogramData;
+        } else {
+            // Append the new spectrogram data to the existing cumulative data
+            int existingLength = cummulativeSpectrogram.length;
+            int newLength = newSpectrogramData.length;
+            int totalLength = existingLength + newLength;
+
+            double[][] updatedSpectrogramData = new double[totalLength][];
+            System.arraycopy(cummulativeSpectrogram, 0, updatedSpectrogramData, 0, existingLength);
+            System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
+            cummulativeSpectrogram = updatedSpectrogramData;
+        }
     }
 
     @Override 

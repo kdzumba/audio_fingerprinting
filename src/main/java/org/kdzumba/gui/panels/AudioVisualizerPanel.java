@@ -128,19 +128,6 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         //and rendering that
 
         double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 512, samples);
-        if(cumulativeSpectrogramData == null) {
-            cumulativeSpectrogramData = newSpectrogramData;
-        } else {
-            // Append the new spectrogram data to the existing cumulative data
-            int existingLength = cumulativeSpectrogramData.length;
-            int newLength = newSpectrogramData.length;
-            int totalLength = existingLength + newLength;
-
-            double[][] updatedSpectrogramData = new double[totalLength][];
-            System.arraycopy(cumulativeSpectrogramData, 0, updatedSpectrogramData, 0, existingLength);
-            System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
-            cumulativeSpectrogramData = updatedSpectrogramData;
-        }
 
         //We are passing the newly generated spectrogram data for visualization
         spectrogram.setSpectrogramData(newSpectrogramData);
