@@ -29,11 +29,11 @@ public class AudioProcessor implements Publisher{
     public boolean shouldPerformMatch = false;
     private double[][] cumulativeSpectrogram;
 
-    private static final int BUFFER_SIZE = 1024; // Max number of samples to store for spectrogram generation
+    private static final int BUFFER_SIZE = 44100; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
 
     public AudioProcessor() {
-        float SAMPLE_RATE = 8192;
+        float SAMPLE_RATE = 16384;
         int SAMPLE_SIZE_IN_BITS = 16;
 
         int CHANNELS = 1;
@@ -194,31 +194,14 @@ public class AudioProcessor implements Publisher{
             FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
             Complex[] stft = transformer.transform(timeBlock, TransformType.FORWARD);
 
-            
             for(int j = 0; j < numberOfFrequencyBins; j++) {
                 double magnitude = stft[j].abs();
                 spectrogram[i][j] = 20 * Math.log10(magnitude);
             }
         }
 
-        this.updatecumulativeSpectrogram(spectrogram);
+        this.updateCumulativeSpectrogram(spectrogram);
         return spectrogram;
-    }
-
-    public double[] getSpectrumMagnitudes() {
-        FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
-        double[] doubleSamples = new double[samplesArray.length];
-        double[] magnitudes = new double[samplesArray.length / 2];
-
-        for(int i = 0; i < samplesArray.length; i++) {
-            doubleSamples[i] = samplesArray[i];
-        }
-
-        Complex[] fft = transformer.transform(doubleSamples, TransformType.FORWARD);
-        for(int i = 0; i < fft.length / 2; i++) {
-            magnitudes[i] = Math.pow(fft[i].abs(), 2);
-        }
-        return magnitudes;
     }
 
     private TargetDataLine getTargetDataLine() {
@@ -312,7 +295,7 @@ public class AudioProcessor implements Publisher{
         return intersection.size();
     }
 
-    private void updatecumulativeSpectrogram(double[][] newSpectrogramData) {
+    private void updateCumulativeSpectrogram(double[][] newSpectrogramData) {
         if(cumulativeSpectrogram == null) {
             cumulativeSpectrogram = newSpectrogramData;
         } else {
@@ -334,11 +317,9 @@ public class AudioProcessor implements Publisher{
         Set<FingerprintHash> fingerprints = this.generateAudioFingerprint(cumulativeSpectrogram, peakThreshold, fanOut);
 
         if (!shouldPerformMatch) {
-            this.shouldPerformMatch = false;
             this.saveFingerprints(fingerprints, "fingerprints.ser");
         } else {
             this.toMatch = fingerprints;
-            this.shouldPerformMatch = true;
         }
     }
 

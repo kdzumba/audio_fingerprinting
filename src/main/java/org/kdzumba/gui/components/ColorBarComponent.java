@@ -43,7 +43,6 @@ public class ColorBarComponent extends JComponent {
             g2d.drawLine(width - 30, y, width - 25, y); // Tick mark
 
             String label = String.format("%.0f", minMagnitude + i * tickInterval);
-            int labelWidth = g2d.getFontMetrics().stringWidth(label);
             g2d.drawString(label, width - 25, y); // Label
         }
     }

@@ -13,11 +13,10 @@ import static org.kdzumba.gui.common.Constants.SPECTROGRAM_GRADIENT;
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class SpectrogramComponent extends JComponent {
-    private final int WIDTH = 850;
+    private final int WIDTH = 1024;
     private final int HEIGHT = 512;
     private double[][] spectrogramData;
     private final AudioFormat audioFormat;
-    private int currentTimeCol = 0;
 
     public SpectrogramComponent(AudioFormat format) {
         this.audioFormat = format;
@@ -25,19 +24,18 @@ public class SpectrogramComponent extends JComponent {
 
     public void setSpectrogramData(double[][] spectrogramData) {
        
-        if(this.spectrogramData == null) {
+//        if(this.spectrogramData == null) {
             this.spectrogramData = spectrogramData;
 
-        } else {
-            double[][] newSpectrogram = new double[currentTimeCol + 1][HEIGHT];
-            for(int i = 0; i < this.spectrogramData.length; i++) {
-                System.arraycopy(this.spectrogramData[i], 0, newSpectrogram[i], 0, this.spectrogramData[0].length);
-            }
-            System.arraycopy(spectrogramData[0], 0, newSpectrogram[this.spectrogramData.length - 1], 0, spectrogramData[0].length);
-
-            this.spectrogramData = newSpectrogram;
-        }
-        currentTimeCol++;
+//        } else {
+//            double[][] newSpectrogram = new double[this.spectrogramData.length + 1][HEIGHT];
+//            for(int i = 0; i < this.spectrogramData.length; i++) {
+//                System.arraycopy(this.spectrogramData[i], 0, newSpectrogram[i], 0, this.spectrogramData[0].length);
+//            }
+//            System.arraycopy(spectrogramData[0], 0, newSpectrogram[this.spectrogramData.length - 1], 0, spectrogramData[0].length);
+//
+//            this.spectrogramData = newSpectrogram;
+//        }
         repaint();
     }
 
@@ -48,6 +46,7 @@ public class SpectrogramComponent extends JComponent {
         int numberOfBins = spectrogramData[0].length; // Each bin represent frequency
                                                       //
         System.out.println("NumberofWindows: " + numberOfWindows);
+        System.out.println("NumberOfBins: " + numberOfBins);
 
         double colWidth = (double) WIDTH / numberOfWindows;
         double rowHeight = (double) HEIGHT / numberOfBins;
@@ -61,8 +60,9 @@ public class SpectrogramComponent extends JComponent {
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
 
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
+                int invertedJ = numberOfBins - 1 - j;
                 g.setColor(color);
-                g.fillRect((int) (i * colWidth + 80), (int) (j * rowHeight + 20), (int) colWidth, (int) rowHeight);
+                g.fillRect((int) (i * colWidth + 80), (int) (invertedJ * rowHeight + 20), (int) colWidth, (int) rowHeight);
             }
         }
     }
@@ -121,7 +121,7 @@ public class SpectrogramComponent extends JComponent {
         g.setColor(Color.BLACK);
         double binFrequency = (double) audioFormat.getSampleRate() / 1024;
         for (int i = 0; i < 512; i += 512 / 10) {
-            int y = i + 20;
+            int y = HEIGHT + 20 - i;
             g.drawLine(65, y, 80, y);
             g.drawString(String.format("%.2f", (i * binFrequency) / 1000), 25, y);
         }
