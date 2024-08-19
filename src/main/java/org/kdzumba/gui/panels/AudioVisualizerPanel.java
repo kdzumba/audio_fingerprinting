@@ -18,7 +18,6 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private final SpectrogramComponent spectrogram;
     private final AudioProcessor audioProcessor = new AudioProcessor();
     private final ColorBarComponent colorBar;
-    private boolean shouldPerformMatch = false;
 
     public AudioVisualizerPanel() {
         var controlsPanel = getContentPanel();
@@ -89,7 +88,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private JButton matchButton() {
         JButton matchButton = new JButton("Match");
         matchButton.addActionListener((e) -> {
-            shouldPerformMatch = true;
+            audioProcessor.shouldPerformMatch = true;
             try {
                 audioProcessor.startCapture();
                 Timer timer = new Timer(50, (event) -> {
@@ -120,7 +119,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
     }
 
     private void onGenerateSpectrogram(List<Short> samples) {
-        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(2048, 1024, samples);
+        double[][] newSpectrogramData = audioProcessor.generateSpectrogram(1024, 100, samples);
         spectrogram.setSpectrogramData(newSpectrogramData);
     }
 }
