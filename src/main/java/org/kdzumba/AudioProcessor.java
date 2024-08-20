@@ -29,11 +29,11 @@ public class AudioProcessor implements Publisher{
     public boolean shouldPerformMatch = false;
     private double[][] cumulativeSpectrogram;
 
-    private static final int BUFFER_SIZE = 16384; // Max number of samples to store for spectrogram generation
+    private static final int BUFFER_SIZE = 98304; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
 
     public AudioProcessor() {
-        float SAMPLE_RATE = 8192;
+        float SAMPLE_RATE = 16384;
         int SAMPLE_SIZE_IN_BITS = 16;
 
         int CHANNELS = 1;
@@ -196,13 +196,12 @@ public class AudioProcessor implements Publisher{
             Complex[] stft = transformer.transform(timeBlock, TransformType.FORWARD);
 
             for(int j = 0; j < numberOfFrequencyBins; j++) {
-                double magnitude = Math.log1p(Math.pow(stft[j].abs(), 2));
-//                if(20 * Math.log10(magnitude) < 0) System.out.println("Magnitude: " + magnitude + " is less than zero");
-                spectrogram[i][j] = magnitude;
+                double magnitudedB = 20 * Math.log10(stft[j].abs());
+                spectrogram[i][j] = magnitudedB;
             }
         }
 
-        this.updateCumulativeSpectrogram(spectrogram);
+        //this.updateCumulativeSpectrogram(spectrogram);
         return spectrogram;
     }
 

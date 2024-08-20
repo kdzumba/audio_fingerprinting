@@ -17,9 +17,13 @@ public class SpectrogramComponent extends JComponent {
     private final int HEIGHT = 512;
     private double[][] spectrogramData;
     private final AudioFormat audioFormat;
+    private int windowSize;
+    private int hopSize;
 
-    public SpectrogramComponent(AudioFormat format) {
+    public SpectrogramComponent(AudioFormat format, int windowSize, int hopSize) {
         this.audioFormat = format;
+        this.windowSize = windowSize;
+        this.hopSize = hopSize;
     }
 
     public void setSpectrogramData(double[][] spectrogramData) {
@@ -37,6 +41,14 @@ public class SpectrogramComponent extends JComponent {
 //            this.spectrogramData = newSpectrogram;
 //        }
         repaint();
+    }
+
+    public void setWindowSize(int windowSize) {
+        this.windowSize = windowSize;
+    }
+
+    public void setHopSize(int hopSize) {
+        this.hopSize = hopSize;
     }
 
     private void drawSpectrogram(Graphics g) {
@@ -116,8 +128,9 @@ public class SpectrogramComponent extends JComponent {
         g2d.setTransform(original);
 
         g.setColor(Color.BLACK);
-        double binFrequency = (double) audioFormat.getSampleRate() / 1024;
-        for (int i = 0; i < 512; i += 512 / 10) {
+        double binFrequency = (double) audioFormat.getSampleRate() / windowSize;
+        int numberOfBins = windowSize / 2;
+        for (int i = 0; i < numberOfBins; i += numberOfBins / 10) {
             int y = HEIGHT + 20 - i;
             g.drawLine(65, y, 80, y);
             g.drawString(String.format("%.2f", (i * binFrequency) / 1000), 25, y);
