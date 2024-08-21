@@ -24,7 +24,7 @@ public class SpectrogramComponent extends JComponent {
     private int animationDuration = 6000;
     private int lastRenderedWindow = 0;
     private int frameCounter = 0;
-    private boolean isAnimating;
+    private boolean bufferWaiting;
 
     public SpectrogramComponent(AudioFormat format, int windowSize) {
         this.audioFormat = format;
@@ -32,16 +32,13 @@ public class SpectrogramComponent extends JComponent {
     }
 
     public void setSpectrogramData(double[][] spectrogramData) {
-        if(!isAnimating) {
-            System.out.println("Setting spectrogramData");
-            this.spectrogramData = spectrogramBackBuffer == null ? spectrogramData : spectrogramBackBuffer;
-        } else if(isAnimating) {
-            System.out.println("Setting in animation");
-            this.spectrogramBackBuffer = spectrogramData;
-        }
-
         if(animationTimer == null || !animationTimer.isRunning()) {
+            this.spectrogramData = bufferWaiting ? spectrogramBackBuffer : spectrogramData;
+            bufferWaiting = false;
             startSpectrogramAnimation();
+        } else {
+            this.spectrogramBackBuffer = spectrogramData;
+            this.bufferWaiting = true;
         }
     }
 
@@ -52,8 +49,6 @@ public class SpectrogramComponent extends JComponent {
     private void startSpectrogramAnimation() {
         if(spectrogramData == null) return;
         
-        isAnimating = true;
-
         int numberOfWindows = spectrogramData.length;
         int framesPerSecond = 10;
         int totalFrames = (animationDuration / 1000) * framesPerSecond;
@@ -64,9 +59,14 @@ public class SpectrogramComponent extends JComponent {
             frameCounter++;
             if(windowsToRender >= numberOfWindows) {
                 windowsToRender = 0;
-                System.out.println("Number Of Frames after all windows: " + frameCounter);
+                //System.out.println("Number Of Frames after all windows: " + frameCounter);
                 frameCounter = 0;
-                isAnimating = false;
+                animationTimer.stop();
+                if(this.bufferWaiting) {
+                    this.spectrogramData = this.spectrogramBackBuffer;
+                    this.bufferWaiting = false;
+                    startSpectrogramAnimation();
+                }
             }   
             repaint();
         });
