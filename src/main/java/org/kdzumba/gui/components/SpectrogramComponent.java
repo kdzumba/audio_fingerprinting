@@ -13,54 +13,61 @@ import static org.kdzumba.gui.common.Constants.SPECTROGRAM_GRADIENT;
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class SpectrogramComponent extends JComponent {
-    private final int WIDTH = 1024;
+    private final int WIDTH = 1080;
     private final int HEIGHT = 512;
     private double[][] spectrogramData;
+    private double[][] spectrogramBackBuffer;
     private final AudioFormat audioFormat;
     private int windowSize;
-    private int hopSize;
-    private int columnsToRender = 0;
+    private int windowsToRender = 0;
     private Timer animationTimer;
-    private int animationDuration = 2000;
-    
+    private int animationDuration = 6000;
+    private int lastRenderedWindow = 0;
+    private int frameCounter = 0;
+    private boolean isAnimating;
 
-    public SpectrogramComponent(AudioFormat format, int windowSize, int hopSize) {
+    public SpectrogramComponent(AudioFormat format, int windowSize) {
         this.audioFormat = format;
         this.windowSize = windowSize;
-        this.hopSize = hopSize;
     }
 
     public void setSpectrogramData(double[][] spectrogramData) {
-        this.spectrogramData = spectrogramData;
-        //columnsToRender = 0;
-
-        if(animationTimer != null && animationTimer.isRunning()) {
-            //animationTimer.stop();
+        if(!isAnimating) {
+            System.out.println("Setting spectrogramData");
+            this.spectrogramData = spectrogramBackBuffer == null ? spectrogramData : spectrogramBackBuffer;
+        } else if(isAnimating) {
+            System.out.println("Setting in animation");
+            this.spectrogramBackBuffer = spectrogramData;
         }
-        startSpectrogramAnimation();
+
+        if(animationTimer == null || !animationTimer.isRunning()) {
+            startSpectrogramAnimation();
+        }
     }
 
     public void setWindowSize(int windowSize) {
         this.windowSize = windowSize;
     }
 
-    public void setHopSize(int hopSize) {
-        this.hopSize = hopSize;
-    }
-
     private void startSpectrogramAnimation() {
         if(spectrogramData == null) return;
+        
+        isAnimating = true;
 
         int numberOfWindows = spectrogramData.length;
-        int delay = animationDuration / numberOfWindows;
+        int framesPerSecond = 10;
+        int totalFrames = (animationDuration / 1000) * framesPerSecond;
+        double windowsPerFrame = (double) numberOfWindows / totalFrames;
 
-        System.out.println("Delay: " + delay);
-
-        animationTimer = new Timer(delay, e -> {
-            columnsToRender++;
-            if(columnsToRender >= numberOfWindows) {
-                animationTimer.stop();
-            }
+        animationTimer = new Timer(1000 / framesPerSecond, e -> {
+            windowsToRender = (int) Math.min(lastRenderedWindow + windowsPerFrame, numberOfWindows);
+            frameCounter++;
+            if(windowsToRender >= numberOfWindows) {
+                windowsToRender = 0;
+                System.out.println("Number Of Frames after all windows: " + frameCounter);
+                frameCounter = 0;
+                isAnimating = false;
+            }   
             repaint();
         });
 
@@ -79,8 +86,8 @@ public class SpectrogramComponent extends JComponent {
 
         Range fromRange = getIntensityRange(numberOfWindows, numberOfBins);
         Range toRange = new Range(0.0, 1.0);
-
-        for(int i = 0; i < columnsToRender; i++) {
+        
+        for(int i = 0; i < windowsToRender; i++) {
             for(int j = 0; j < numberOfBins; j++) {
                 float intensity = (float) Math.log1p(spectrogramData[i][j]);
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
@@ -91,6 +98,7 @@ public class SpectrogramComponent extends JComponent {
                 g.fillRect((int) (i * colWidth + 80), (int) (invertedJ * rowHeight + 20), (int) colWidth, (int) rowHeight);
             }
         }
+        lastRenderedWindow = windowsToRender;
     }
 
 
@@ -163,8 +171,6 @@ public class SpectrogramComponent extends JComponent {
 
         drawTimeTicks(g);
         drawFrequencyTicks(g);
-
-        //startSpectrogramAnimation();
         this.drawSpectrogram(g);
     }
 
