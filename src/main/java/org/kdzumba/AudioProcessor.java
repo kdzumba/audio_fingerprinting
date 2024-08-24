@@ -14,6 +14,7 @@ import java.nio.ByteOrder;
 import java.util.*;
 
 import org.kdzumba.interfaces.*;
+import org.kdzumba.utils.MathUtils;
 
 public class AudioProcessor implements Publisher{
     private final AudioFormat audioFormat;
@@ -29,11 +30,11 @@ public class AudioProcessor implements Publisher{
     public boolean shouldPerformMatch = false;
     private double[][] cumulativeSpectrogram;
 
-    private static final int BUFFER_SIZE = 98304; // Max number of samples to store for spectrogram generation
+    private static final int BUFFER_SIZE = 49152; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
 
     public AudioProcessor() {
-        float SAMPLE_RATE = 16384;
+        float SAMPLE_RATE = 8192;
         int SAMPLE_SIZE_IN_BITS = 16;
 
         int CHANNELS = 1;
@@ -92,14 +93,14 @@ public class AudioProcessor implements Publisher{
         try {
             if(outputStream != null) outputStream.close();
             if(inputStream != null) inputStream.close();
-
+            this.generateFingerprints();
             if(shouldPerformMatch) {
                 Set<FingerprintHash> storedFingerprints = loadFingerprints("fingerprints.ser");
                 System.out.println("Number of hashes stored: " + storedFingerprints.size());
-                System.out.println("Number of hashes matched: " + storedFingerprints.size());
+                System.out.println("Number of hashes matched: " + toMatch.size());
                 int matchScore = matchFingerprints(storedFingerprints, toMatch);
 
-                if (matchScore > 75) {
+                if (matchScore > 80) {
                     System.out.println("MatchScore: " + matchScore);
                     System.out.println("Match found!");
                 } else {
@@ -107,6 +108,7 @@ public class AudioProcessor implements Publisher{
                     System.out.println("No match.");
                 }
                 shouldPerformMatch = false;
+                cumulativeSpectrogram = null;
             } 
         } catch(IOException exception) {
             System.out.println("An IOException occurred when closing streams");
@@ -163,6 +165,35 @@ public class AudioProcessor implements Publisher{
         }   
     }
 
+    private void normalizeMagnitudes(double[][] spectrogram) {
+        MathUtils.Range spectrogramRange = getSpectrogramRange(spectrogram);
+        MathUtils.Range normalizedRange = new MathUtils.Range(0, 100);
+
+        for(int i = 0; i < spectrogram.length; i++) {
+            for(int j = 0; j < spectrogram[0].length; j++) {
+                spectrogram[i][j] = MathUtils.convertToRange(spectrogram[i][j], spectrogramRange, normalizedRange);
+            }
+        }
+    }
+
+    private static MathUtils.Range getSpectrogramRange(double[][] spectrogram) {
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+
+        for (double[] doubles : spectrogram) {
+            for (int j = 0; j < spectrogram[0].length; j++) {
+                double current = doubles[j];
+                if (current > max) {
+                    max = current;
+                }
+                if (current < min) {
+                    min = current;
+                }
+            }
+        }
+        return new MathUtils.Range(min, max);
+    }
+
     public double[][] generateSpectrogram(int windowSize, int hopSize, List<Short> samples) {
         int numberOfTimeBlocks = (samples.size() - windowSize) / hopSize + 1;
         int numberOfFrequencyBins = (windowSize / 2);
@@ -201,7 +232,8 @@ public class AudioProcessor implements Publisher{
             }
         }
 
-        //this.updateCumulativeSpectrogram(spectrogram);
+        normalizeMagnitudes(spectrogram);
+        new Thread(() -> this.updateCumulativeSpectrogram(spectrogram)).start();
         return spectrogram;
     }
 
@@ -233,32 +265,45 @@ public class AudioProcessor implements Publisher{
         }).start();
     }
 
-    public Set<Peak> extractPeaks(double[][] spectrogram, double threshold) {
-        Set<Peak> peaks = new HashSet<>();
+    public List<Peak> extractBandPeaks(double[][] spectrogram, double threshold) {
+        List<Peak> bandPeaks = new ArrayList<>();
+        int numberOfBands = 12;
+        int numberOfWindows = spectrogram.length;
+        double nyquistFreq = this.audioFormat.getSampleRate() / 2.0;
+        double[] bandBoundaries = new double[numberOfBands + 1];
 
-        for (int time = 1; time < spectrogram.length - 1; time++) {
-            for (int frequency = 1; frequency < spectrogram[time].length - 1; frequency++) {
-                double magnitude = spectrogram[time][frequency];
-                if (magnitude > threshold &&
-                        magnitude > spectrogram[time - 1][frequency] &&
-                        magnitude > spectrogram[time + 1][frequency] &&
-                        magnitude > spectrogram[time][frequency - 1] &&
-                        magnitude > spectrogram[time][frequency + 1]) {
+        for(int i = 0; i <= numberOfBands; i++) {
+            bandBoundaries[i] = nyquistFreq / Math.pow(2, numberOfBands - i);
+        }
 
-                    peaks.add(new Peak(time, frequency, magnitude));
+        for(int window = 0; window < numberOfWindows; window++) {
+            double[] windowData = spectrogram[window];
+            for(int bin = 0; bin < windowData.length; bin++) {
+                double frequency = (bin * nyquistFreq) / (windowData.length - 1);
+                if(windowData[bin] > threshold && frequency > 300) {
+                    int band = getBandForFrequency(bandBoundaries, frequency);
+                    bandPeaks.add(new Peak(window, bin, band, windowData[bin], frequency));
                 }
             }
         }
-        return peaks;
+        return bandPeaks;
     }
 
-    public Set<FingerprintHash> generateHashes(Set<Peak> peaks, int fanOut) {
+    private int getBandForFrequency(double[] bandBoundaries, double frequency) {
+        for (int i = 0; i < bandBoundaries.length - 1; i++) {
+            if (frequency >= bandBoundaries[i + 1] && frequency < bandBoundaries[i]) {
+                return i;
+            }
+        }
+        return bandBoundaries.length - 1; // Frequency is in the highest band
+    }
+
+    public Set<FingerprintHash> generateHashes(List<Peak> peaks, int fanOut) {
         Set<FingerprintHash> hashes = new HashSet<>();
         List<Peak> peakList = new ArrayList<>(peaks);
 
         for (int i = 0; i < peakList.size(); i++) {
             Peak anchor = peakList.get(i);
-
             for (int j = 1; j <= fanOut && i + j < peakList.size(); j++) {
                 Peak point = peakList.get(i + j);
                 FingerprintHash hash = new FingerprintHash(anchor, point);
@@ -269,7 +314,7 @@ public class AudioProcessor implements Publisher{
     }
 
     public Set<FingerprintHash> generateAudioFingerprint(double[][] spectrogram, double peakThreshold, int fanOut) {
-        Set<Peak> peaks = extractPeaks(spectrogram, peakThreshold);
+        List<Peak> peaks = extractBandPeaks(spectrogram, peakThreshold);
         return generateHashes(peaks, fanOut);
     }
 
@@ -309,18 +354,17 @@ public class AudioProcessor implements Publisher{
             System.arraycopy(cumulativeSpectrogram, 0, updatedSpectrogramData, 0, existingLength);
             System.arraycopy(newSpectrogramData, 0, updatedSpectrogramData, existingLength, newLength);
             cumulativeSpectrogram = updatedSpectrogramData;
-
-            this.generateFingerprints();
         }
     }
 
     public void generateFingerprints() {
-        double peakThreshold = 10.0;
-        int fanOut = 20;
+        double peakThreshold = 98;
+        int fanOut = 10;
         Set<FingerprintHash> fingerprints = this.generateAudioFingerprint(cumulativeSpectrogram, peakThreshold, fanOut);
 
         if (!shouldPerformMatch) {
             this.saveFingerprints(fingerprints, "fingerprints.ser");
+            System.out.println("Done fingerprinting...");
         } else {
             this.toMatch = fingerprints;
         }

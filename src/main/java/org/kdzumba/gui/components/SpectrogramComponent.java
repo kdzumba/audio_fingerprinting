@@ -13,7 +13,7 @@ import static org.kdzumba.gui.common.Constants.SPECTROGRAM_GRADIENT;
 import static org.kdzumba.gui.common.Constants.VISUALIZER_BACKGROUND_COLOR;
 
 public class SpectrogramComponent extends JComponent {
-    private final int WIDTH = 1080;
+    private final int WIDTH = 1024;
     private final int HEIGHT = 512;
     private double[][] spectrogramData;
     private double[][] spectrogramBackBuffer;

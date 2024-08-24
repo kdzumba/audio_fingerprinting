@@ -7,14 +7,14 @@ import java.util.Objects;
 public class FingerprintHash implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
-    public int frequency1;
-    public int frequency2;
+    public double frequency1;
+    public double frequency2;
     public int timeDifference;
     public int anchorTime;
 
     public FingerprintHash(Peak peak1, Peak peak2) {
-        this.frequency1 = peak1.frequency;
-        this.frequency2 = peak2.frequency;
+        this.frequency1 = peak1.actualFrequency;
+        this.frequency2 = peak2.actualFrequency;
         this.timeDifference = peak2.time - peak1.time;
         this.anchorTime = peak1.time;
     }
@@ -29,13 +29,16 @@ public class FingerprintHash implements Serializable {
         if (this == obj) return true;
         if (obj == null || getClass() != obj.getClass()) return false;
         FingerprintHash that = (FingerprintHash) obj;
-        return frequency1 == that.frequency1 &&
-                frequency2 == that.frequency2 &&
+
+        boolean isEqual = Double.compare(that.frequency1, frequency1) == 0 &&
+                Double.compare(that.frequency2, frequency2) == 0 &&
                 timeDifference == that.timeDifference;
+        System.out.println("This: " + this + " that: " + that + " IsEqual: " + isEqual);
+        return isEqual;
     }
 
     @Override
     public String toString() {
-        return String.format("Hash[f1=%d, f2=%d, dt=%d, t=%d]", frequency1, frequency2, timeDifference, anchorTime);
+        return String.format("Hash[f1=%.2f, f2=%.2f, dt=%d, t=%d]", frequency1, frequency2, timeDifference, anchorTime);
     }
 }
