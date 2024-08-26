@@ -13,6 +13,10 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
 
+import org.kdzumba.database.entities.FingerprintHashEntity;
+import org.kdzumba.database.entities.SongMetaData;
+import org.kdzumba.database.repositories.FingerprintHashRepository;
+import org.kdzumba.database.repositories.SongMetaDataRepository;
 import org.kdzumba.interfaces.*;
 import org.kdzumba.utils.MathUtils;
 
@@ -29,11 +33,16 @@ public class AudioProcessor implements Publisher{
     public Set<FingerprintHash> toMatch;
     public boolean shouldPerformMatch = false;
     private double[][] cumulativeSpectrogram;
+    private final FingerprintHashRepository fingerprintHashRepository;
+    private final SongMetaDataRepository songMetaDataRepository;
 
     private static final int BUFFER_SIZE = 49152; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
 
-    public AudioProcessor() {
+    public AudioProcessor(FingerprintHashRepository fingerprintHashRepository, SongMetaDataRepository songMetaDataRepository) {
+        this.fingerprintHashRepository = fingerprintHashRepository;
+        this.songMetaDataRepository = songMetaDataRepository;
+
         float SAMPLE_RATE = 8192;
         int SAMPLE_SIZE_IN_BITS = 16;
 
@@ -95,20 +104,20 @@ public class AudioProcessor implements Publisher{
             if(inputStream != null) inputStream.close();
             this.generateFingerprints();
             if(shouldPerformMatch) {
-                Set<FingerprintHash> storedFingerprints = loadFingerprints("fingerprints.ser");
-                System.out.println("Number of hashes stored: " + storedFingerprints.size());
-                System.out.println("Number of hashes matched: " + toMatch.size());
-                int matchScore = matchFingerprints(storedFingerprints, toMatch);
+                Set<FingerprintHashEntity> hashEntitiesToMatch = new HashSet<>();
 
-                if (matchScore > 80) {
-                    System.out.println("MatchScore: " + matchScore);
-                    System.out.println("Match found!");
-                } else {
-                    System.out.println("MatchScore: " + matchScore);
-                    System.out.println("No match.");
+                for(FingerprintHash fingerprint : toMatch) {
+                    FingerprintHashEntity dbHash = new FingerprintHashEntity();
+                    dbHash.setHash(fingerprint.hashCode());
+                    dbHash.setAnchorTimeOffset(fingerprint.anchorTimeOffset);
+                    hashEntitiesToMatch.add(dbHash);
                 }
+
+                SongMetaData matchedSong = findBestMatch(hashEntitiesToMatch);
+
                 shouldPerformMatch = false;
                 cumulativeSpectrogram = null;
+                toMatch = null;
             } 
         } catch(IOException exception) {
             System.out.println("An IOException occurred when closing streams");
@@ -141,16 +150,15 @@ public class AudioProcessor implements Publisher{
         while (capturing) {
             int totalBytesRead = 0;
             while (totalBytesRead < numberOfBytesRead) {
-                int bytesRead = inputStream.read(pipedOutputStreamBuffer, totalBytesRead, numberOfBytesRead - totalBytesRead);
+                int bytesRead = inputStream.read(pipedOutputStreamBuffer,
+                        totalBytesRead,
+                        numberOfBytesRead - totalBytesRead);
                 if (bytesRead == -1) {
                     break;
                 }
                 totalBytesRead += bytesRead;
             }
 
-            //This conversion from bytes to shorts means we have half the number of samples as 
-            //the bytes that were read (1 short = 2 bytes), so the samples array always contains 
-            //half the read bytes size
             ByteBuffer.wrap(pipedOutputStreamBuffer).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(samplesArray);
 
             if (totalBytesRead > 0) {
@@ -200,36 +208,24 @@ public class AudioProcessor implements Publisher{
         double[][] spectrogram = new double[numberOfTimeBlocks][numberOfFrequencyBins];
         double[] windowFunction = new double[windowSize];
 
-        // Hamming window function
         for(int i = 0; i < windowSize; i++) {
             windowFunction[i] = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (windowSize - 1));
         }
 
         for(int i = 0; i < numberOfTimeBlocks; i++) {
             double[] timeBlock = new double[windowSize];
-
             Iterator<Short> iterator = samples.iterator();
-            // skip to start of the current window
             for(int j = 0; j < i * hopSize; j++) iterator.next();
 
             for(int k = 0; k < windowSize; k++) {
                 if(iterator.hasNext()) {
-                    // Applying the window function to each of the samples within the current timeBlock
                     timeBlock[k] = iterator.next() * windowFunction[k];
                 } else {
-                    // Zero-padding if we run out of samples before reaching window size
                     timeBlock[k] = 0;
                 }
             }
 
-            // Perform Short Time Fourier Transform (stft) on the timeBlock
-            FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
-            Complex[] stft = transformer.transform(timeBlock, TransformType.FORWARD);
-
-            for(int j = 0; j < numberOfFrequencyBins; j++) {
-                double magnitudedB = 20 * Math.log10(stft[j].abs());
-                spectrogram[i][j] = magnitudedB;
-            }
+            performSTFT(spectrogram, timeBlock, numberOfFrequencyBins, i);
         }
 
         normalizeMagnitudes(spectrogram);
@@ -237,12 +233,17 @@ public class AudioProcessor implements Publisher{
         return spectrogram;
     }
 
-    private TargetDataLine getTargetDataLine() {
-        if(line != null) {
-            line.stop();
-            line.close();
-        }
+    private void performSTFT(double[][] spectrogram, double[] timeBlock, int numberOfFrequencyBins, int currentWindow) {
+        FastFourierTransformer transformer = new FastFourierTransformer(DftNormalization.STANDARD);
+        Complex[] stft = transformer.transform(timeBlock, TransformType.FORWARD);
 
+        for(int j = 0; j < numberOfFrequencyBins; j++) {
+            double magnitudedB = 20 * Math.log10(stft[j].abs());
+            spectrogram[currentWindow][j] = magnitudedB;
+        }
+    }
+
+    private TargetDataLine getTargetDataLine() {
         DataLine.Info info = new DataLine.Info(TargetDataLine.class, this.audioFormat);
 
         if (!AudioSystem.isLineSupported(info)) {
@@ -265,7 +266,7 @@ public class AudioProcessor implements Publisher{
         }).start();
     }
 
-    public List<Peak> extractBandPeaks(double[][] spectrogram, double threshold) {
+    public List<Peak> extractBandPeaks(double[][] spectrogram, double threshold, double hopSize) {
         List<Peak> bandPeaks = new ArrayList<>();
         int numberOfBands = 12;
         int numberOfWindows = spectrogram.length;
@@ -278,11 +279,12 @@ public class AudioProcessor implements Publisher{
 
         for(int window = 0; window < numberOfWindows; window++) {
             double[] windowData = spectrogram[window];
+            double timeOffset = window * hopSize / this.audioFormat.getSampleRate();
             for(int bin = 0; bin < windowData.length; bin++) {
                 double frequency = (bin * nyquistFreq) / (windowData.length - 1);
                 if(windowData[bin] > threshold && frequency > 300) {
                     int band = getBandForFrequency(bandBoundaries, frequency);
-                    bandPeaks.add(new Peak(window, bin, band, windowData[bin], frequency));
+                    bandPeaks.add(new Peak(window, bin, band, windowData[bin], frequency, timeOffset));
                 }
             }
         }
@@ -314,32 +316,71 @@ public class AudioProcessor implements Publisher{
     }
 
     public Set<FingerprintHash> generateAudioFingerprint(double[][] spectrogram, double peakThreshold, int fanOut) {
-        List<Peak> peaks = extractBandPeaks(spectrogram, peakThreshold);
+        List<Peak> peaks = extractBandPeaks(spectrogram, peakThreshold, 100);
         return generateHashes(peaks, fanOut);
     }
 
     public void saveFingerprints(Set<FingerprintHash> fingerprints, String filename) {
-        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
-            oos.writeObject(fingerprints);
-        } catch (IOException e) {
-            e.printStackTrace();
+        SongMetaData metaData = new SongMetaData();
+        metaData.setYear(2024);
+        metaData.setSong("3001");
+        metaData.setArtist("J. Cole");
+        songMetaDataRepository.save(metaData);
+
+        for(FingerprintHash fingerprint : fingerprints) {
+            FingerprintHashEntity dbHash = new FingerprintHashEntity();
+            dbHash.setHash(fingerprint.hashCode());
+            dbHash.setSongMetaData(metaData);
+            dbHash.setAnchorTimeOffset(fingerprint.anchorTimeOffset);
+            fingerprintHashRepository.save(dbHash);
         }
     }
 
-    public Set<FingerprintHash> loadFingerprints(String filename) {
-        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename))) {
-            return (Set<FingerprintHash>) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-            return null;
+    public SongMetaData findBestMatch(Set<FingerprintHashEntity> sampleFingerprints) {
+        List<FingerprintHashEntity> storedFingerprints = fingerprintHashRepository.findAllByOrderByHashAsc();;
+        Map<Long, List<Double>> timeDiffMap = new HashMap<>();
+
+        for (FingerprintHashEntity sampleFingerprint : sampleFingerprints) {
+            for (FingerprintHashEntity storedFingerprint : storedFingerprints) {
+                if (sampleFingerprint.equals(storedFingerprint)) {
+                    Long songId = storedFingerprint.getSongMetaData().getId();
+                    double timeDifference = sampleFingerprint.getAnchorTimeOffset() - storedFingerprint.getAnchorTimeOffset();
+
+                    timeDiffMap.computeIfAbsent(songId, k -> new ArrayList<>()).add(timeDifference);
+                }
+            }
         }
+
+        // Scoring based on time difference histogram
+        Long bestMatchSongId = null;
+        int maxHistogramPeak = 0;
+
+        for (Map.Entry<Long, List<Double>> entry : timeDiffMap.entrySet()) {
+            List<Double> timeDiffs = entry.getValue();
+            int histogramPeak = calculateHistogramPeak(timeDiffs);
+
+            if (histogramPeak > maxHistogramPeak) {
+                maxHistogramPeak = histogramPeak;
+                bestMatchSongId = entry.getKey();
+            }
+        }
+
+        if (bestMatchSongId != null) {
+            return songMetaDataRepository.findById(bestMatchSongId).orElse(null);
+        }
+        return null;
     }
 
-    public int matchFingerprints(Set<FingerprintHash> storedFingerprints, Set<FingerprintHash> newFingerprints) {
-        Set<FingerprintHash> intersection = new HashSet<>(storedFingerprints);
-        intersection.retainAll(newFingerprints);
-        return intersection.size();
+    private int calculateHistogramPeak(List<Double> timeDifferences) {
+        Map<Double, Integer> histogram = new HashMap<>();
+
+        for (double timeDiff : timeDifferences) {
+            histogram.put(timeDiff, histogram.getOrDefault(timeDiff, 0) + 1);
+        }
+
+        return histogram.values().stream().max(Integer::compareTo).orElse(0);
     }
+
 
     private void updateCumulativeSpectrogram(double[][] newSpectrogramData) {
         if(cumulativeSpectrogram == null) {

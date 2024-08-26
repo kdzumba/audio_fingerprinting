@@ -5,6 +5,8 @@ import org.kdzumba.gui.components.ColorBarComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
 import org.kdzumba.interfaces.Subscriber;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
@@ -13,13 +15,16 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.List;
 
+@Component
 public class AudioVisualizerPanel extends JPanel implements Subscriber {
     private final TimeAmplitudeGraphComponent audioVisualizer;
     private final SpectrogramComponent spectrogram;
-    private final AudioProcessor audioProcessor = new AudioProcessor();
+    private final AudioProcessor audioProcessor;
     private final ColorBarComponent colorBar;
 
-    public AudioVisualizerPanel() {
+    @Autowired
+    public AudioVisualizerPanel(AudioProcessor audioProcessor) {
+        this.audioProcessor= audioProcessor;
         var controlsPanel = getContentPanel();
 
         this.setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
