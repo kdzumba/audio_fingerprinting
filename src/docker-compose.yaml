@@ -1,0 +1,14 @@
+services:
+    database:
+      container_name: fingerprinting_db
+      image: fingerprinting:1.0.0
+      environment:
+        - POSTGRES_PASSWORD=password
+        - POSTGRES_USER=knowledge
+        - POSTGRES_DB=audio_fingerprinting
+      volumes:
+          - pgdata:/var/lib/postgresql/data
+      ports:
+          - "5432:5432"
+volumes:
+  pgdata:
