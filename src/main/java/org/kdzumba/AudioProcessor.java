@@ -19,7 +19,9 @@ import org.kdzumba.database.repositories.FingerprintHashRepository;
 import org.kdzumba.database.repositories.SongMetaDataRepository;
 import org.kdzumba.interfaces.*;
 import org.kdzumba.utils.MathUtils;
+import org.springframework.stereotype.Component;
 
+@Component
 public class AudioProcessor implements Publisher{
     private final AudioFormat audioFormat;
     public final List<Short> samples;
