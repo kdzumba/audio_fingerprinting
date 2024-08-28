@@ -31,4 +31,9 @@ public class SongMetaData {
 
     @OneToMany(mappedBy = "songMetaData")
     private Set<FingerprintHashEntity> hashes;
+
+    @Override
+    public String toString() {
+        return "{Artist: " + this.artist + ", Song: " + this.song + " Year: " + this.year + "}";
+    }
 }

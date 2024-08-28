@@ -116,6 +116,7 @@ public class AudioProcessor implements Publisher{
                 }
 
                 SongMetaData matchedSong = findBestMatch(hashEntitiesToMatch);
+                System.out.println(matchedSong);
 
                 shouldPerformMatch = false;
                 cumulativeSpectrogram = null;
@@ -322,11 +323,11 @@ public class AudioProcessor implements Publisher{
         return generateHashes(peaks, fanOut);
     }
 
-    public void saveFingerprints(Set<FingerprintHash> fingerprints, String filename) {
+    public void saveFingerprints(Set<FingerprintHash> fingerprints) {
         SongMetaData metaData = new SongMetaData();
-        metaData.setYear(2024);
-        metaData.setSong("3001");
-        metaData.setArtist("J. Cole");
+        metaData.setYear(2017);
+        metaData.setSong("Castle On The Hill");
+        metaData.setArtist("Ed Sheeran");
         songMetaDataRepository.save(metaData);
 
         for(FingerprintHash fingerprint : fingerprints) {
@@ -367,6 +368,8 @@ public class AudioProcessor implements Publisher{
             }
         }
 
+        System.out.println("Max Histogram Peak: " + maxHistogramPeak);
+
         if (bestMatchSongId != null) {
             return songMetaDataRepository.findById(bestMatchSongId).orElse(null);
         }
@@ -401,12 +404,12 @@ public class AudioProcessor implements Publisher{
     }
 
     public void generateFingerprints() {
-        double peakThreshold = 98;
+        double peakThreshold = 96;
         int fanOut = 10;
         Set<FingerprintHash> fingerprints = this.generateAudioFingerprint(cumulativeSpectrogram, peakThreshold, fanOut);
 
         if (!shouldPerformMatch) {
-            this.saveFingerprints(fingerprints, "fingerprints.ser");
+            this.saveFingerprints(fingerprints);
             System.out.println("Done fingerprinting...");
         } else {
             this.toMatch = fingerprints;
