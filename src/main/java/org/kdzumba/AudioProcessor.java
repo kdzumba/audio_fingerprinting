@@ -17,6 +17,7 @@ import org.kdzumba.database.entities.FingerprintHashEntity;
 import org.kdzumba.database.entities.SongMetaData;
 import org.kdzumba.database.repositories.FingerprintHashRepository;
 import org.kdzumba.database.repositories.SongMetaDataRepository;
+import org.kdzumba.gui.panels.MatchResultsPanel;
 import org.kdzumba.interfaces.*;
 import org.kdzumba.utils.MathUtils;
 import org.springframework.stereotype.Component;
@@ -105,26 +106,30 @@ public class AudioProcessor implements Publisher{
             if(outputStream != null) outputStream.close();
             if(inputStream != null) inputStream.close();
             this.generateFingerprints();
-            if(shouldPerformMatch) {
-                Set<FingerprintHashEntity> hashEntitiesToMatch = new HashSet<>();
-
-                for(FingerprintHash fingerprint : toMatch) {
-                    FingerprintHashEntity dbHash = new FingerprintHashEntity();
-                    dbHash.setHash(fingerprint.hashCode());
-                    dbHash.setAnchorTimeOffset(fingerprint.anchorTimeOffset);
-                    hashEntitiesToMatch.add(dbHash);
-                }
-
-                SongMetaData matchedSong = findBestMatch(hashEntitiesToMatch);
-                System.out.println(matchedSong);
-
-                shouldPerformMatch = false;
-                cumulativeSpectrogram = null;
-                toMatch = null;
-            } 
         } catch(IOException exception) {
             System.out.println("An IOException occurred when closing streams");
         }
+    }
+
+    public void performMatch() {
+        this.generateFingerprints();
+        Set<FingerprintHashEntity> hashEntitiesToMatch = new HashSet<>();
+
+        for(FingerprintHash fingerprint : toMatch) {
+            FingerprintHashEntity dbHash = new FingerprintHashEntity();
+            dbHash.setHash(fingerprint.hashCode());
+            dbHash.setAnchorTimeOffset(fingerprint.anchorTimeOffset);
+            hashEntitiesToMatch.add(dbHash);
+        }
+
+        SongMetaData matchedSong = findBestMatch(hashEntitiesToMatch);
+        System.out.println(matchedSong);
+
+        MatchResultsPanel.updateMatchResults(matchedSong.getSong(), matchedSong.getArtist(), matchedSong.getYear());
+
+        shouldPerformMatch = false;
+        cumulativeSpectrogram = null;
+        toMatch = null;
     }
 
     public short[] getSamplesArray() { return samplesArray; }
@@ -325,9 +330,9 @@ public class AudioProcessor implements Publisher{
 
     public void saveFingerprints(Set<FingerprintHash> fingerprints) {
         SongMetaData metaData = new SongMetaData();
-        metaData.setYear(2017);
-        metaData.setSong("Castle On The Hill");
-        metaData.setArtist("Ed Sheeran");
+        metaData.setYear(2022);
+        metaData.setSong("Calm Down");
+        metaData.setArtist("Rema, Selena Gomez");
         songMetaDataRepository.save(metaData);
 
         for(FingerprintHash fingerprint : fingerprints) {

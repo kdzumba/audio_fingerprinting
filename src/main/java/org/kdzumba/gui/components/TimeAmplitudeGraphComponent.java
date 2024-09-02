@@ -16,6 +16,11 @@ public class TimeAmplitudeGraphComponent extends JComponent {
 
     public TimeAmplitudeGraphComponent(short[] samples) {
         this.samples = samples;
+
+        Timer timer = new Timer(50, (event) -> {
+            this.repaint();
+        });
+        timer.start();
     }
 
     private void drawSoundWave(Graphics g) {

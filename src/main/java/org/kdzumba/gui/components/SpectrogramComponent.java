@@ -89,7 +89,7 @@ public class SpectrogramComponent extends JComponent {
         
         for(int i = 0; i < windowsToRender; i++) {
             for(int j = 0; j < numberOfBins; j++) {
-                float intensity = (float) Math.log1p(spectrogramData[i][j]);
+                float intensity = (float) spectrogramData[i][j];
                 float normalizedIntensity = (float) MathUtils.convertToRange(intensity, fromRange, toRange);
 
                 Color color = UIUtils.getColorForRatio(SPECTROGRAM_GRADIENT, normalizedIntensity);
@@ -109,7 +109,8 @@ public class SpectrogramComponent extends JComponent {
         // Calculate max and min intensity values
         for(int i = 0; i < numberOfRows; i++) {
             for(int j = 0; j < numberOfCols; j++) {
-                double intensity = Math.log1p(spectrogramData[i][j]);
+                double intensity = spectrogramData[i][j];
+//                System.out.println("Intensity: " + intensity);
                 if(intensity > maxIntensity) {
                     maxIntensity = intensity;
                 }
@@ -122,7 +123,7 @@ public class SpectrogramComponent extends JComponent {
         // Avoid division by zero
         if(maxIntensity == minIntensity) {
             maxIntensity = minIntensity + 1;
-        }
+        };
         return new Range(minIntensity, maxIntensity);
     }
 

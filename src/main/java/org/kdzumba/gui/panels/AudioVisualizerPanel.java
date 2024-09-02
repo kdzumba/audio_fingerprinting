@@ -1,6 +1,7 @@
 package org.kdzumba.gui.panels;
 
 import org.kdzumba.AudioProcessor;
+import org.kdzumba.gui.common.Constants;
 import org.kdzumba.gui.components.ColorBarComponent;
 import org.kdzumba.gui.components.SpectrogramComponent;
 import org.kdzumba.gui.components.TimeAmplitudeGraphComponent;
@@ -14,6 +15,7 @@ import javax.swing.border.BevelBorder;
 import java.awt.*;
 import java.io.IOException;
 import java.util.List;
+import java.util.TimerTask;
 
 @Component
 public class AudioVisualizerPanel extends JPanel implements Subscriber {
@@ -35,8 +37,7 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
 
         spectrogram = new SpectrogramComponent(audioProcessor.getAudioFormat(), 1024);
 
-        Color[] colors = {Color.BLUE, Color.CYAN, Color.GREEN, Color.YELLOW, Color.ORANGE, Color.RED};
-        colorBar = new ColorBarComponent(colors, 0, 100, 10);
+        colorBar = new ColorBarComponent(Constants.SPECTROGRAM_GRADIENT, 0, 100, 10);
 
         JPanel spectrogramPanel = new JPanel();
         this.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
@@ -63,31 +64,11 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         buttonLabelGroup.add(gridLabel);
         buttonLabelGroup.add(showGrid);
 
-        JButton fingerprintButton = fingerprintButton();
         JButton matchButton = matchButton();
-        JButton stopCaptureButton = getStopCaptureButton();
         var controlsPanel = new JPanel();
         controlsPanel.add(buttonLabelGroup);
-        controlsPanel.add(fingerprintButton);
         controlsPanel.add(matchButton);
-        controlsPanel.add(stopCaptureButton);
         return controlsPanel;
-    }
-
-    private JButton fingerprintButton() {
-        JButton fingerprintButton = new JButton("Fingerprint");
-        fingerprintButton.addActionListener((e) -> {
-            try {
-                audioProcessor.startCapture();
-                    Timer timer = new Timer(50, (event) -> {
-                        audioVisualizer.repaint();
-                    });
-                    timer.start();
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-        });
-        return fingerprintButton;
     }
 
     private JButton matchButton() {
@@ -95,22 +76,22 @@ public class AudioVisualizerPanel extends JPanel implements Subscriber {
         matchButton.addActionListener((e) -> {
             audioProcessor.shouldPerformMatch = true;
             try {
-                audioProcessor.startCapture();
-                Timer timer = new Timer(50, (event) -> {
-                    audioVisualizer.repaint();
-                });
-                timer.start();
+                if(!audioProcessor.capturing)
+                    audioProcessor.startCapture();
+                // Start a timer for 30 seconds
+                java.util.Timer timer = new java.util.Timer();
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        // Perform match after 30 seconds of capture
+                        audioProcessor.performMatch();
+                    }
+                }, 30000); // 30,000 milliseconds = 30 seconds
             } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         });
         return matchButton;
-    }
-
-    private JButton getStopCaptureButton() {
-        JButton stopAudioCapture = new JButton("Stop");
-        stopAudioCapture.addActionListener((e) -> audioProcessor.stopCapture());
-        return stopAudioCapture;
     }
 
     private void toggleGrid() {
