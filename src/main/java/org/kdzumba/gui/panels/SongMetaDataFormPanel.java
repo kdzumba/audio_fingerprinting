@@ -4,6 +4,10 @@ import javax.swing.*;
 import java.awt.*;
 
 public class SongMetaDataFormPanel extends JPanel {
+    public static JTextField songNameField;
+    public static JTextField artistNameField;
+    public static JTextField songYearField;
+
     public SongMetaDataFormPanel() {
 
         int hgap = 10;
@@ -12,13 +16,13 @@ public class SongMetaDataFormPanel extends JPanel {
         this.setLayout(new BorderLayout(hgap, vgap));
 
         JPanel fieldsPanel = new JPanel();
-        JTextField artistNameField = new JTextField();
+        artistNameField = new JTextField();
         JLabel artistNameLabel = new JLabel("Artist Name:");
 
-        JTextField songNameField = new JTextField();
+        songNameField = new JTextField();
         JLabel songNameLabel = new JLabel("Song Name:");
 
-        JTextField songYearField = new JTextField();
+        songYearField = new JTextField();
         JLabel songYearLabel = new JLabel("Year:");
 
         fieldsPanel.setLayout(new GridLayout(3, 2));

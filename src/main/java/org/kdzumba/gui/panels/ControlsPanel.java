@@ -41,7 +41,10 @@ public class ControlsPanel extends JPanel{
     private JButton getStopCaptureButton() {
         JButton stopAudioCapture = new JButton("Stop");
         stopAudioCapture.setEnabled(false);
-        stopAudioCapture.addActionListener((e) -> audioProcessor.stopCapture());
+        stopAudioCapture.addActionListener((e) -> {
+            audioProcessor.setSongMetaData();
+            audioProcessor.stopCapture();
+        });
         return stopAudioCapture;
     }
 }

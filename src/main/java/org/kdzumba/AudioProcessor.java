@@ -18,6 +18,7 @@ import org.kdzumba.database.entities.SongMetaData;
 import org.kdzumba.database.repositories.FingerprintHashRepository;
 import org.kdzumba.database.repositories.SongMetaDataRepository;
 import org.kdzumba.gui.panels.MatchResultsPanel;
+import org.kdzumba.gui.panels.SongMetaDataFormPanel;
 import org.kdzumba.interfaces.*;
 import org.kdzumba.utils.MathUtils;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,10 @@ public class AudioProcessor implements Publisher{
     private double[][] cumulativeSpectrogram;
     private final FingerprintHashRepository fingerprintHashRepository;
     private final SongMetaDataRepository songMetaDataRepository;
+
+    private String artistName;
+    private String songName;
+    private int songYear;
 
     private static final int BUFFER_SIZE = 49152; // Max number of samples to store for spectrogram generation
     private static final int PIPED_STREAM_BUFFER_SIZE = 2048; // Number of bytes to read off the Target Data Line's buffer
@@ -67,6 +72,12 @@ public class AudioProcessor implements Publisher{
 
     public AudioFormat getAudioFormat() {
         return audioFormat;
+    }
+
+    public void setSongMetaData() {
+        artistName = SongMetaDataFormPanel.artistNameField.getText();
+        songName = SongMetaDataFormPanel.songNameField.getText();
+        songYear = Integer.parseInt(SongMetaDataFormPanel.songYearField.getText());
     }
 
     public void startCapture() throws IOException {
@@ -123,9 +134,10 @@ public class AudioProcessor implements Publisher{
         }
 
         SongMetaData matchedSong = findBestMatch(hashEntitiesToMatch);
-        System.out.println(matchedSong);
-
-        MatchResultsPanel.updateMatchResults(matchedSong.getSong(), matchedSong.getArtist(), matchedSong.getYear());
+        if(matchedSong != null) {
+            System.out.println(matchedSong);
+            MatchResultsPanel.updateMatchResults(matchedSong.getSong(), matchedSong.getArtist(), matchedSong.getYear());
+        }
 
         shouldPerformMatch = false;
         cumulativeSpectrogram = null;
@@ -330,9 +342,9 @@ public class AudioProcessor implements Publisher{
 
     public void saveFingerprints(Set<FingerprintHash> fingerprints) {
         SongMetaData metaData = new SongMetaData();
-        metaData.setYear(2022);
-        metaData.setSong("Calm Down");
-        metaData.setArtist("Rema, Selena Gomez");
+        metaData.setYear(this.songYear);
+        metaData.setSong(this.songName);
+        metaData.setArtist(this.artistName);
         songMetaDataRepository.save(metaData);
 
         for(FingerprintHash fingerprint : fingerprints) {
@@ -375,7 +387,8 @@ public class AudioProcessor implements Publisher{
 
         System.out.println("Max Histogram Peak: " + maxHistogramPeak);
 
-        if (bestMatchSongId != null) {
+        if(bestMatchSongId != null && maxHistogramPeak >= 5) {
+            System.out.println("Histogram Peak below Threshold, no match found");
             return songMetaDataRepository.findById(bestMatchSongId).orElse(null);
         }
         return null;
@@ -387,7 +400,6 @@ public class AudioProcessor implements Publisher{
         for (double timeDiff : timeDifferences) {
             histogram.put(timeDiff, histogram.getOrDefault(timeDiff, 0) + 1);
         }
-
         return histogram.values().stream().max(Integer::compareTo).orElse(0);
     }
 
